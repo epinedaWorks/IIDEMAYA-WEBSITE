@@ -109,6 +109,12 @@ export default function PostulacionForm() {
     );
   }
 
+  // Numeración visible de cada pregunta, en el mismo orden en que aparecen
+  // en el formulario (se reinicia en cada render, así que hay que llamar a
+  // n() exactamente una vez por pregunta, en orden).
+  let contadorPregunta = 0;
+  const n = () => ++contadorPregunta;
+
   return (
     <form
       ref={formRef}
@@ -135,12 +141,12 @@ export default function PostulacionForm() {
         <h2 className="text-lg font-semibold text-brand-dark">Datos de contacto</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="nombre" className={etiqueta}>Nombre completo</label>
+            <label htmlFor="nombre" className={etiqueta}>{n()}. Nombre completo</label>
             <input id="nombre" name="nombre" required maxLength={200} className={campo} />
           </div>
           <div />
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="correo" className={etiqueta}>Correo</label>
+            <label htmlFor="correo" className={etiqueta}>{n()}. Correo</label>
             <input
               id="correo"
               name="correo"
@@ -160,7 +166,7 @@ export default function PostulacionForm() {
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="confirmCorreo" className={etiqueta}>Confirma tu correo</label>
+            <label htmlFor="confirmCorreo" className={etiqueta}>{n()}. Confirma tu correo</label>
             <input
               id="confirmCorreo"
               name="confirmCorreo"
@@ -178,7 +184,7 @@ export default function PostulacionForm() {
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="telefono" className={etiqueta}>Teléfono (opcional)</label>
+            <label htmlFor="telefono" className={etiqueta}>{n()}. Teléfono (opcional)</label>
             <input id="telefono" name="telefono" maxLength={50} className={campo} />
           </div>
         </div>
@@ -189,7 +195,7 @@ export default function PostulacionForm() {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label htmlFor="modalidadTrabajo" className={etiqueta}>
-              ¿Qué modalidad de trabajo prefiere?
+              {n()}. ¿Qué modalidad de trabajo prefiere?
             </label>
             <select id="modalidadTrabajo" name="modalidadTrabajo" required defaultValue="" className={campo}>
               <option value="" disabled>Selecciona una opción</option>
@@ -201,7 +207,7 @@ export default function PostulacionForm() {
 
           {PREGUNTAS_SI_NO.map((p) => (
             <fieldset key={p.key} className="flex flex-col gap-1.5">
-              <legend className={etiqueta}>{p.label}</legend>
+              <legend className={etiqueta}>{n()}. {p.label}</legend>
               <div className="flex gap-4 pt-1">
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="radio" name={p.key} value="si" required /> Sí
@@ -235,13 +241,13 @@ export default function PostulacionForm() {
           )}
           {PREGUNTAS_TEXTO.map((p) => (
             <div key={p.key} className="flex flex-col gap-1.5">
-              <label htmlFor={p.key} className={etiqueta}>{p.label}</label>
+              <label htmlFor={p.key} className={etiqueta}>{n()}. {p.label}</label>
               <textarea id={p.key} name={p.key} required rows={3} maxLength={4000} className={campo} />
             </div>
           ))}
           <div className="flex flex-col gap-1.5">
             <label htmlFor={PREGUNTA_DIA_NO_DISPONIBLE.key} className={etiqueta}>
-              {PREGUNTA_DIA_NO_DISPONIBLE.label}
+              {n()}. {PREGUNTA_DIA_NO_DISPONIBLE.label}
             </label>
             <input
               id={PREGUNTA_DIA_NO_DISPONIBLE.key}
@@ -258,12 +264,12 @@ export default function PostulacionForm() {
         <p className="mt-1 text-sm text-foreground/60">Formatos aceptados: PDF o Word, hasta 8 MB.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="cv" className={etiqueta}>CV</label>
+            <label htmlFor="cv" className={etiqueta}>{n()}. CV</label>
             <input id="cv" name="cv" type="file" accept=".pdf,.doc,.docx" required className={campo} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="documento" className={etiqueta}>
-              Otro documento (opcional)
+              {n()}. Otro documento (opcional)
             </label>
             <input id="documento" name="documento" type="file" accept=".pdf,.doc,.docx" className={campo} />
           </div>
