@@ -27,7 +27,7 @@ export default function Footer() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-white">Contacto</p>
           <ul className="mt-3 space-y-2 text-sm">
-            <li>info@iidemaya.org</li>
+            <li>erick.pineda@iidemaya.org.gt</li>
             <li>Guatemala, Guatemala</li>
           </ul>
         </div>

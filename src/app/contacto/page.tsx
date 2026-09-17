@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ContactForm from "@/components/ContactForm";
 
 export const metadata: Metadata = {
   title: "Contacto | IIDEMAYA",
@@ -6,7 +7,11 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_INFO = [
-  { label: "Correo", value: "info@iidemaya.org", href: "mailto:info@iidemaya.org" },
+  {
+    label: "Correo",
+    value: "erick.pineda@iidemaya.org.gt",
+    href: "mailto:erick.pineda@iidemaya.org.gt",
+  },
   { label: "Teléfono", value: "+502 0000 0000", href: "tel:+50200000000" },
   { label: "Ubicación", value: "Guatemala, Guatemala" },
 ];
@@ -40,18 +45,8 @@ export default function Contacto() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-black/5 bg-white p-8 shadow-sm">
-          <h2 className="text-lg font-semibold text-brand-dark">Escríbenos directamente</h2>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-            La forma más rápida de contactarnos es por correo electrónico. Con gusto te
-            responderemos lo antes posible.
-          </p>
-          <a
-            href="mailto:info@iidemaya.org"
-            className="mt-4 inline-block rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
-          >
-            Enviar correo
-          </a>
+        <div className="mt-10">
+          <ContactForm />
         </div>
       </section>
     </div>
