@@ -77,6 +77,7 @@ export default function AnuncioForm({
   const [lista, setLista] = useState<Persona[]>([]);
   const [nuevoCorreo, setNuevoCorreo] = useState("");
   const [nuevoNombre, setNuevoNombre] = useState("");
+  const [errorCorreo, setErrorCorreo] = useState("");
   const [asunto, setAsunto] = useState("");
   const [mensaje, setMensaje] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -85,7 +86,19 @@ export default function AnuncioForm({
 
   const agregar = () => {
     const correo = nuevoCorreo.trim().toLowerCase();
-    if (!ES_CORREO(correo)) return;
+    if (!correo) {
+      setErrorCorreo("Escribe un correo primero.");
+      return;
+    }
+    if (!ES_CORREO(correo)) {
+      setErrorCorreo(`"${nuevoCorreo.trim()}" no es un correo válido — revisa que tenga @ y dominio.`);
+      return;
+    }
+    if (lista.some((p) => p.correo === correo)) {
+      setErrorCorreo("Ese correo ya está en la lista.");
+      return;
+    }
+    setErrorCorreo("");
     setLista((l) => dedupe([...l, { correo, nombre: nuevoNombre.trim() || correo.split("@")[0] }]));
     setNuevoCorreo("");
     setNuevoNombre("");
@@ -149,11 +162,16 @@ export default function AnuncioForm({
 
         <div className="mt-3 flex flex-wrap gap-2">
           <input
+            type="email"
             placeholder="correo@ejemplo.com"
             value={nuevoCorreo}
-            onChange={(e) => setNuevoCorreo(e.target.value)}
+            onChange={(e) => {
+              setNuevoCorreo(e.target.value);
+              if (errorCorreo) setErrorCorreo("");
+            }}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregar())}
-            className={`${inputCls} min-w-[180px] flex-1`}
+            aria-invalid={Boolean(errorCorreo)}
+            className={`${inputCls} min-w-[180px] flex-1 ${errorCorreo ? "border-red-400 focus:border-red-500" : ""}`}
           />
           <input
             placeholder="Nombre (opcional)"
@@ -170,6 +188,7 @@ export default function AnuncioForm({
             + Agregar
           </button>
         </div>
+        {errorCorreo && <p className="mt-1.5 text-xs font-medium text-red-600">{errorCorreo}</p>}
         <p className="mt-2 text-xs text-foreground/50">A quien esté aquí le llega el correo. Nada más.</p>
       </div>
 
