@@ -1,6 +1,13 @@
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.EMAIL_FROM || "IIDEMAYA <no-reply@iidemaya.org.gt>";
 const TEAM_EMAIL = process.env.TEAM_EMAIL;
+const ADMIN_URL = process.env.ADMIN_URL || "http://localhost:3000/admin";
+// Quiénes revisan postulaciones — separado de TEAM_EMAIL (que es el correo
+// genérico de contacto público). Si no está configurado, cae a TEAM_EMAIL.
+const ADMIN_NOTIFY_EMAILS = (process.env.ADMIN_NOTIFY_EMAILS || TEAM_EMAIL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 let avisado = false;
 function sinConfig() {
@@ -132,6 +139,44 @@ export async function sendContactEmail(d: DatosContacto): Promise<ResultadoEnvio
     html: layout(
       `¡Gracias por escribirnos, ${esc(d.nombre.split(" ")[0])}!`,
       `<p style="font-size:14px;line-height:1.6">Recibimos tu mensaje y te responderemos a este correo lo antes posible.</p>`
+    ),
+    replyTo: TEAM_EMAIL,
+  });
+
+  return resultadoEquipo;
+}
+
+// ---------- Postulaciones (/talento) ----------
+export type DatosPostulacion = {
+  id: string;
+  nombre: string;
+  correo: string;
+};
+
+export async function sendPostulacionEmails(d: DatosPostulacion): Promise<ResultadoEnvio> {
+  let resultadoEquipo: ResultadoEnvio = { ok: false, motivo: "sin destinatario" };
+  if (ADMIN_NOTIFY_EMAILS.length) {
+    resultadoEquipo = await enviar({
+      to: ADMIN_NOTIFY_EMAILS,
+      subject: `Nueva postulación: ${d.nombre}`,
+      html: layout(
+        "Nueva postulación recibida",
+        `${filas([
+          ["Nombre", d.nombre],
+          ["Correo", d.correo],
+        ])}
+        <p style="margin-top:16px"><a href="${ADMIN_URL}/postulaciones/${d.id}" style="color:#0f5132">Ver postulación completa →</a></p>`
+      ),
+      replyTo: d.correo,
+    });
+  }
+
+  await enviar({
+    to: d.correo,
+    subject: "Recibimos tu postulación · IIDEMAYA",
+    html: layout(
+      `¡Gracias por postularte, ${esc(d.nombre.split(" ")[0])}!`,
+      `<p style="font-size:14px;line-height:1.6">Recibimos tu información y tu CV. El equipo la revisará y te contactará a este correo si tu perfil avanza en el proceso.</p>`
     ),
     replyTo: TEAM_EMAIL,
   });

@@ -1,0 +1,95 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Cuenta de administrador del panel (/admin). Login por correo + contraseña
+// (hash con bcrypt, nunca texto plano) vía NextAuth Credentials.
+model AdminUser {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime     @default(now())
+  comentarios  Comentario[]
+}
+
+// Comentario interno de un administrador sobre una postulación (para
+// coordinar el proceso de selección entre varias personas del equipo).
+model Comentario {
+  id            String      @id @default(cuid())
+  texto         String
+  createdAt     DateTime    @default(now())
+  postulacion   Postulacion @relation(fields: [postulacionId], references: [id], onDelete: Cascade)
+  postulacionId String
+  admin         AdminUser   @relation(fields: [adminId], references: [id])
+  adminId       String
+}
+
+enum ModalidadTrabajo {
+  REMOTO
+  PRESENCIAL
+  HIBRIDO
+}
+
+// Estado del proceso de selección, para que el panel admin pueda filtrar
+// por etapa en vez de tener que leer comentarios para saber en qué va cada
+// postulación.
+enum EstadoPostulacion {
+  NUEVA
+  EN_REVISION
+  ENTREVISTA
+  RECHAZADA
+  CONTRATADA
+}
+
+// Una postulación enviada desde /talento. Las respuestas de opinión van en
+// columnas separadas (String) en vez de un solo Json: son pocas preguntas
+// fijas y así se pueden filtrar/exportar directo por SQL si el equipo lo
+// necesita más adelante. Los campos nuevos de sí/no y la modalidad sí usan
+// tipos estrictos (Boolean / enum) porque son los que tiene sentido filtrar
+// en el panel.
+model Postulacion {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Contacto
+  nombre   String
+  correo   String
+  telefono String?
+
+  // Preguntas de entrevista (reformuladas, mismo fondo que el cuestionario original)
+  opinionSociedad                  String
+  opinionPoblacionMaya              String
+  comodidadTrabajarConPoblacionMaya String
+  opinionFormaPensarActuarMaya      String
+  opinionCulturaMaya                String
+  opinionCosmovisionMaya            String
+  disposicionCeremoniaMaya          String
+  disponibilidadTiempo              String
+  disponibilidadHorario             String
+  diaNoDisponible                   String?
+  trabajoBajoPresion                String
+  porQueEstaOrganizacion            String
+  etapaCarrera                      String
+  porQueContratarlo                 String
+  expectativaSalarial               String
+
+  // Preguntas nuevas
+  modalidadTrabajo    ModalidadTrabajo
+  puedeFacturar       Boolean
+  tieneVehiculo       Boolean
+  esEstudianteActual  Boolean
+  trabajaActualmente  Boolean
+
+  // Archivos (keys de Netlify Blobs, no el archivo en sí)
+  cvBlobKey        String
+  documentoBlobKey String?
+
+  estado      EstadoPostulacion @default(NUEVA)
+  comentarios Comentario[]
+}
