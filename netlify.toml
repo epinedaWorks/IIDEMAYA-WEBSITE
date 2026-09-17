@@ -1,6 +1,9 @@
 # Configuración de despliegue en Netlify para el sitio Next.js.
 [build]
-  command = "npm run build"
+  # Netlify DB inyecta la cadena de conexión como NETLIFY_DB_URL (no
+  # DATABASE_URL, que es lo único que sabe leer el CLI de Prisma), así que
+  # se copia antes de correr las migraciones contra la base real.
+  command = "export DATABASE_URL=$NETLIFY_DB_URL && npx prisma migrate deploy && npm run build"
   publish = ".next"
 
 [build.environment]
