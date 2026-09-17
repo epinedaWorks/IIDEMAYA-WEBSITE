@@ -1,0 +1,11 @@
+# Configuración de despliegue en Netlify para el sitio Next.js.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Plugin oficial de Next.js (App Router, API routes, ISR).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
