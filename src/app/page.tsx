@@ -2,19 +2,19 @@ import Link from "next/link";
 
 const AREAS = [
   {
-    title: "Centros Educativos",
+    title: "Centros Educativos Tecnológicos",
     description:
-      "Una red de colegios que acompaña a estudiantes y docentes con procesos y herramientas cada vez más modernas.",
+      "9 institutos en distintos departamentos del país, con carreras técnicas (Peritos) en Recursos Naturales, Industria Alimentaria, Informática y Mecánica Automotriz.",
   },
   {
-    title: "Universidad ITMES",
+    title: "ITEMAYA",
     description:
-      "Educación superior orientada a formar profesionales con impacto real en sus comunidades.",
+      "Instituto Técnico Maya en Recursos Naturales, en Uspantán, El Quiché — uno de nuestros centros insignia de educación técnica.",
   },
   {
-    title: "Gestión y Administración",
+    title: "Proyectos Comunitarios",
     description:
-      "Procesos administrativos y financieros ordenados que sostienen el trabajo educativo día a día.",
+      "Iniciativas rurales enfocadas en la conservación de recursos naturales, junto a las comunidades donde trabajamos.",
   },
 ];
 
@@ -24,15 +24,15 @@ export default function Home() {
       <section className="bg-brand-light">
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-24">
           <span className="rounded-full bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
-            Educación con propósito
+            Organización maya · desde 1997
           </span>
           <h1 className="max-w-2xl text-4xl font-extrabold leading-tight text-brand-dark sm:text-5xl">
-            Impulsamos educación de calidad en Guatemala
+            Educación técnica y desarrollo para comunidades mayas de Guatemala
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-foreground/80">
-            IIDEMAYA reúne una red de centros educativos y la Universidad ITMES, trabajando
-            para ofrecer procesos educativos y administrativos modernos, confiables y al
-            servicio de nuestras comunidades.
+            El Instituto de Investigación y de Desarrollo Maya (IIDEMAYA) administra 9 centros
+            educativos tecnológicos en distintos departamentos del país y desarrolla proyectos
+            comunitarios rurales enfocados en la conservación de recursos naturales.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link

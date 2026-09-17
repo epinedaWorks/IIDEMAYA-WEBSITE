@@ -12,7 +12,7 @@ const CONTACT_INFO = [
     value: "info@iidemaya.org.gt",
     href: "mailto:info@iidemaya.org.gt",
   },
-  { label: "Teléfono", value: "+502 0000 0000", href: "tel:+50200000000" },
+  { label: "Teléfono", value: "2439-2575", href: "tel:+50224392575" },
   { label: "Ubicación", value: "Guatemala, Guatemala" },
 ];
 
@@ -23,8 +23,8 @@ export default function Contacto() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h1 className="text-4xl font-extrabold text-brand-dark">Contacto</h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground/80">
-            ¿Tienes alguna pregunta sobre nuestros centros educativos, la Universidad ITMES o
-            quieres saber más de nuestro trabajo? Escríbenos.
+            ¿Tienes alguna pregunta sobre nuestros centros educativos, ITEMAYA o nuestros
+            proyectos comunitarios? Escríbenos.
           </p>
         </div>
       </section>

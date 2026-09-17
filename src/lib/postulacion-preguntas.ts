@@ -22,7 +22,7 @@ export const PREGUNTAS_TEXTO = [
   { key: "disponibilidadHorario", label: "¿Qué horario le queda mejor?" },
   {
     key: "trabajoBajoPresion",
-    label: "¿Se considera capaz de trabajar bajo presión?",
+    label: "¿Cómo suele manejar los momentos de mucha carga de trabajo o poco tiempo?",
   },
   {
     key: "porQueEstaOrganizacion",
@@ -30,12 +30,11 @@ export const PREGUNTAS_TEXTO = [
   },
   {
     key: "etapaCarrera",
-    label:
-      "¿En qué etapa de su carrera profesional se encuentra: iniciando, en desarrollo, o en un momento de mayor experiencia?",
+    label: "¿Cómo describiría el momento actual de su carrera profesional?",
   },
   {
     key: "porQueContratarlo",
-    label: "¿Por qué considera que sería la persona ideal para este puesto?",
+    label: "¿Qué cree que puede aportar a este puesto?",
   },
   { key: "expectativaSalarial", label: "¿Cuál es su expectativa salarial?" },
 ] as const;

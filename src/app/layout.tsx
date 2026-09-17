@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "IIDEMAYA",
   description:
-    "IIDEMAYA impulsa la educación en Guatemala a través de una red de centros educativos y la Universidad ITMES.",
+    "IIDEMAYA — Instituto de Investigación y de Desarrollo Maya. Educación técnica y proyectos comunitarios de conservación de recursos naturales en Guatemala.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -9,8 +9,8 @@ export default function Footer() {
         <div>
           <p className="text-lg font-bold text-white">IIDEMAYA</p>
           <p className="mt-3 text-sm leading-relaxed">
-            Impulsando educación de calidad en Guatemala a través de nuestra red de centros
-            educativos y la Universidad ITMES.
+            Organización maya que brinda educación tecnológica y desarrolla proyectos
+            comunitarios de conservación de recursos naturales en Guatemala.
           </p>
         </div>
 
@@ -28,6 +28,7 @@ export default function Footer() {
           <p className="text-sm font-semibold uppercase tracking-wide text-white">Contacto</p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>info@iidemaya.org.gt</li>
+            <li>2439-2575</li>
             <li>Guatemala, Guatemala</li>
           </ul>
         </div>

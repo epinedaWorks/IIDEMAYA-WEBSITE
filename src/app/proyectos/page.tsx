@@ -7,22 +7,22 @@ export const metadata: Metadata = {
 
 const PROYECTOS = [
   {
-    title: "Modernización de Centros Educativos",
-    status: "En marcha",
+    title: "Red de Centros Educativos Tecnológicos",
+    area: "Educación técnica",
     description:
-      "Fortalecimiento de procesos académicos y administrativos en nuestra red de colegios, con miras a una plataforma común y segura.",
+      "9 institutos en Alta Verapaz, El Quiché, Chiquimula, Chimaltenango y otros departamentos, con carreras de Perito en Recursos Naturales, Industria Alimentaria, Informática y Mecánica Automotriz.",
   },
   {
-    title: "Universidad ITMES",
-    status: "En marcha",
+    title: "ITEMAYA",
+    area: "Educación técnica",
     description:
-      "Integración de los sistemas académicos de ITMES para ofrecer una experiencia más ágil a estudiantes y docentes.",
+      "Instituto Técnico Maya en Recursos Naturales, en Uspantán, El Quiché — nuestro centro insignia, con apoyo histórico del MAGA, FONAPAZ y la Embajada de Francia.",
   },
   {
-    title: "Fortalecimiento Administrativo y Financiero",
-    status: "Próximamente",
+    title: "Conservación de Recursos Naturales",
+    area: "Proyectos comunitarios",
     description:
-      "Actualización de herramientas de contabilidad y gestión para procesos más rápidos, seguros y con mejores reportes.",
+      "Proyectos rurales con comunidades mayas, herederos del Plan de Acción Forestal Maya (PAF MAYA), enfocados en el manejo sostenible de los recursos naturales.",
   },
 ];
 
@@ -33,8 +33,9 @@ export default function Proyectos() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h1 className="text-4xl font-extrabold text-brand-dark">Proyectos</h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground/80">
-            Estas son algunas de las iniciativas en las que trabajamos para fortalecer la
-            educación en nuestros centros educativos y en la Universidad ITMES.
+            Estas son las principales áreas en las que trabajamos: educación técnica en
+            nuestra red de centros educativos, y proyectos comunitarios de conservación de
+            recursos naturales.
           </p>
         </div>
       </section>
@@ -53,7 +54,7 @@ export default function Proyectos() {
                 </p>
               </div>
               <span className="inline-flex h-fit shrink-0 items-center rounded-full bg-accent-light px-4 py-1 text-xs font-semibold text-accent">
-                {proyecto.status}
+                {proyecto.area}
               </span>
             </div>
           ))}
