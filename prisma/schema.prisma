@@ -93,3 +93,11 @@ model Postulacion {
   estado      EstadoPostulacion @default(NUEVA)
   comentarios Comentario[]
 }
+
+// Ajustes editables desde el panel (correos que reciben avisos de contacto
+// y de postulaciones), con la variable de entorno como respaldo si aún no
+// se ha guardado nada aquí. Mismo patrón que el sitio de PyGuate.
+model Setting {
+  key   String @id
+  value String
+}

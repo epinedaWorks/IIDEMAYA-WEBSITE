@@ -9,10 +9,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-brand-light/30">
       {session && (
         <header className="border-b border-black/5 bg-white">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <Link href="/admin" className="font-bold text-brand-dark">
-              Panel IIDEMAYA
-            </Link>
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div className="flex items-center gap-6">
+              <Link href="/admin" className="font-bold text-brand-dark">
+                Panel IIDEMAYA
+              </Link>
+              <nav className="flex gap-4 text-sm text-foreground/70">
+                <Link href="/admin" className="hover:text-brand">Postulaciones</Link>
+                <Link href="/admin/anuncios" className="hover:text-brand">Anuncios</Link>
+                <Link href="/admin/ajustes" className="hover:text-brand">Ajustes</Link>
+              </nav>
+            </div>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-foreground/60">{session.user?.email}</span>
               <SignOutButton />

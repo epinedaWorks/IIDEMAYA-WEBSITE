@@ -1,13 +1,15 @@
+import { getListaCorreos, SETTING_CONTACT_EMAIL, SETTING_POSTULACION_EMAIL } from "./settings";
+
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.EMAIL_FROM || "IIDEMAYA <no-reply@iidemaya.org.gt>";
-const TEAM_EMAIL = process.env.TEAM_EMAIL;
 const ADMIN_URL = process.env.ADMIN_URL || "http://localhost:3000/admin";
-// Quiénes revisan postulaciones — separado de TEAM_EMAIL (que es el correo
-// genérico de contacto público). Si no está configurado, cae a TEAM_EMAIL.
-const ADMIN_NOTIFY_EMAILS = (process.env.ADMIN_NOTIFY_EMAILS || TEAM_EMAIL || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+
+// Los correos que reciben cada tipo de aviso se editan desde el panel
+// (/admin/ajustes); la variable de entorno es el respaldo si aún no se ha
+// guardado nada.
+const getCorreosContacto = () => getListaCorreos(SETTING_CONTACT_EMAIL, process.env.TEAM_EMAIL);
+const getCorreosPostulacion = () =>
+  getListaCorreos(SETTING_POSTULACION_EMAIL, process.env.ADMIN_NOTIFY_EMAILS || process.env.TEAM_EMAIL);
 
 let avisado = false;
 function sinConfig() {
@@ -113,12 +115,13 @@ export type DatosContacto = {
 };
 
 // Envía el aviso al equipo y el acuse de recibo a quien escribió. Si el
-// equipo no tiene TEAM_EMAIL configurado, igual se manda el acuse.
+// equipo no tiene correos configurados, igual se manda el acuse.
 export async function sendContactEmail(d: DatosContacto): Promise<ResultadoEnvio> {
+  const correosEquipo = await getCorreosContacto();
   let resultadoEquipo: ResultadoEnvio = { ok: false, motivo: "sin destinatario" };
-  if (TEAM_EMAIL) {
+  if (correosEquipo.length) {
     resultadoEquipo = await enviar({
-      to: TEAM_EMAIL,
+      to: correosEquipo,
       subject: `Contacto desde el sitio: ${d.nombre}`,
       html: layout(
         "Nuevo mensaje de contacto",
@@ -140,7 +143,7 @@ export async function sendContactEmail(d: DatosContacto): Promise<ResultadoEnvio
       `¡Gracias por escribirnos, ${esc(d.nombre.split(" ")[0])}!`,
       `<p style="font-size:14px;line-height:1.6">Recibimos tu mensaje y te responderemos a este correo lo antes posible.</p>`
     ),
-    replyTo: TEAM_EMAIL,
+    replyTo: correosEquipo[0],
   });
 
   return resultadoEquipo;
@@ -154,10 +157,11 @@ export type DatosPostulacion = {
 };
 
 export async function sendPostulacionEmails(d: DatosPostulacion): Promise<ResultadoEnvio> {
+  const correosEquipo = await getCorreosPostulacion();
   let resultadoEquipo: ResultadoEnvio = { ok: false, motivo: "sin destinatario" };
-  if (ADMIN_NOTIFY_EMAILS.length) {
+  if (correosEquipo.length) {
     resultadoEquipo = await enviar({
-      to: ADMIN_NOTIFY_EMAILS,
+      to: correosEquipo,
       subject: `Nueva postulación: ${d.nombre}`,
       html: layout(
         "Nueva postulación recibida",
@@ -178,8 +182,112 @@ export async function sendPostulacionEmails(d: DatosPostulacion): Promise<Result
       `¡Gracias por postularte, ${esc(d.nombre.split(" ")[0])}!`,
       `<p style="font-size:14px;line-height:1.6">Recibimos tu información y tu CV. El equipo la revisará y te contactará a este correo si tu perfil avanza en el proceso.</p>`
     ),
-    replyTo: TEAM_EMAIL,
+    replyTo: correosEquipo[0],
   });
 
   return resultadoEquipo;
+}
+
+// ---------- Anuncios (panel: enviar un mensaje a una lista libre de correos) ----------
+export type DestinatarioAnuncio = { correo: string; nombre: string };
+
+// Sustituye {{nombre}} por el primer nombre de la persona (o lo deja igual
+// si no aparece en el mensaje).
+function personaliza(mensaje: string, nombre: string): string {
+  const primerNombre = (nombre || "").trim().split(/\s+/)[0] || nombre;
+  return mensaje.replaceAll("{{nombre}}", primerNombre);
+}
+
+function parrafos(texto: string): string {
+  return texto
+    .split(/\n{2,}/)
+    .map((p) => `<p style="font-size:14px;line-height:1.6;white-space:pre-wrap;margin:0 0 12px">${esc(p)}</p>`)
+    .join("");
+}
+
+type ResultadoEnvioIndividual = { ok: true } | { ok: false; motivo: string };
+
+async function enviarConReintento(
+  correo: string,
+  cuerpoHtml: string,
+  opts: { asunto: string; replyTo?: string }
+): Promise<ResultadoEnvioIndividual> {
+  if (!API_KEY) {
+    sinConfig();
+    return { ok: false, motivo: "no configurado" };
+  }
+  const INTENTOS = 3;
+  for (let intento = 1; intento <= INTENTOS; intento++) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          from: FROM,
+          to: [correo],
+          subject: opts.asunto,
+          html: cuerpoHtml,
+          ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+        }),
+      });
+      if (res.ok) return { ok: true };
+      const cuerpo = await res.text().catch(() => "");
+      if (res.status === 429 && intento < INTENTOS) {
+        await esperar(700 * intento);
+        continue;
+      }
+      console.error("[anuncio] Resend respondió", correo, res.status, cuerpo);
+      return { ok: false, motivo: res.status === 429 ? "límite de envíos por segundo" : `HTTP ${res.status}` };
+    } catch (err) {
+      if (intento < INTENTOS) {
+        await esperar(500 * intento);
+        continue;
+      }
+      console.error("[anuncio] no se pudo enviar a", correo, err);
+      return { ok: false, motivo: "error de red" };
+    }
+  }
+  return { ok: false, motivo: "desconocido" };
+}
+
+// Envía el mismo mensaje (personalizado con {{nombre}}) a una lista libre de
+// correos que el admin escribió a mano. Cada quien recibe SU PROPIO correo,
+// en tandas pequeñas con pausa entre cada una para no pasarse del límite de
+// 10 peticiones/seg de Resend, con reintento individual si alguna falla.
+export async function enviarAnuncioMasivo(opts: {
+  destinatarios: DestinatarioAnuncio[];
+  asunto: string;
+  mensaje: string; // texto plano; puede usar {{nombre}}; párrafos separados por línea en blanco
+  remitenteEmail: string;
+}): Promise<{ enviados: number; fallidos: { correo: string; motivo: string }[] }> {
+  if (!API_KEY) {
+    sinConfig();
+    return { enviados: 0, fallidos: opts.destinatarios.map((d) => ({ correo: d.correo, motivo: "no configurado" })) };
+  }
+  if (opts.destinatarios.length === 0) return { enviados: 0, fallidos: [] };
+
+  const correosEquipo = await getCorreosContacto();
+  const html = (nombre: string) => layout(opts.asunto, parrafos(personaliza(opts.mensaje, nombre)));
+
+  let enviados = 0;
+  const fallidos: { correo: string; motivo: string }[] = [];
+  const TANDA = 5; // concurrencia conservadora frente al límite de 10/seg de Resend
+  for (let i = 0; i < opts.destinatarios.length; i += TANDA) {
+    const tanda = opts.destinatarios.slice(i, i + TANDA);
+    const resultados = await Promise.all(
+      tanda.map((d) =>
+        enviarConReintento(d.correo, html(d.nombre), { asunto: opts.asunto, replyTo: correosEquipo[0] })
+      )
+    );
+    resultados.forEach((r, idx) => {
+      if (r.ok) enviados++;
+      else fallidos.push({ correo: tanda[idx].correo, motivo: r.motivo });
+    });
+    if (i + TANDA < opts.destinatarios.length) await esperar(400);
+  }
+
+  return { enviados, fallidos };
 }

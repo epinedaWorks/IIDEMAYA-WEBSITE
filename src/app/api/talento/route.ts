@@ -36,10 +36,14 @@ export async function POST(req: Request) {
 
   const nombre = texto(form, "nombre", 200);
   const correo = texto(form, "correo", 200);
+  const confirmCorreo = texto(form, "confirmCorreo", 200);
   const telefono = texto(form, "telefono", 50); // opcional
 
   if (!nombre || !correo || !CORREO_RE.test(correo)) {
     return NextResponse.json({ error: "Revisa tu nombre y correo." }, { status: 400 });
+  }
+  if (!confirmCorreo || confirmCorreo.toLowerCase() !== correo.toLowerCase()) {
+    return NextResponse.json({ error: "El correo y su confirmación no coinciden." }, { status: 400 });
   }
 
   // Preguntas de entrevista (todas requeridas salvo "día no disponible").
