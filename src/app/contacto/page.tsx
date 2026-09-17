@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 const CONTACT_INFO = [
   {
     label: "Correo",
-    value: "erick.pineda@iidemaya.org.gt",
-    href: "mailto:erick.pineda@iidemaya.org.gt",
+    value: "info@iidemaya.org.gt",
+    href: "mailto:info@iidemaya.org.gt",
   },
   { label: "Teléfono", value: "+502 0000 0000", href: "tel:+50200000000" },
   { label: "Ubicación", value: "Guatemala, Guatemala" },
