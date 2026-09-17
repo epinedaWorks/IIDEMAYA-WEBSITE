@@ -1,69 +1,90 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const AREAS = [
+  {
+    title: "Centros Educativos",
+    description:
+      "Una red de colegios que acompaña a estudiantes y docentes con procesos y herramientas cada vez más modernas.",
+  },
+  {
+    title: "Universidad ITMES",
+    description:
+      "Educación superior orientada a formar profesionales con impacto real en sus comunidades.",
+  },
+  {
+    title: "Gestión y Administración",
+    description:
+      "Procesos administrativos y financieros ordenados que sostienen el trabajo educativo día a día.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div>
+      <section className="bg-brand-light">
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-24">
+          <span className="rounded-full bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
+            Educación con propósito
+          </span>
+          <h1 className="max-w-2xl text-4xl font-extrabold leading-tight text-brand-dark sm:text-5xl">
+            Impulsamos educación de calidad en Guatemala
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-xl text-lg leading-relaxed text-foreground/80">
+            IIDEMAYA reúne una red de centros educativos y la Universidad ITMES, trabajando
+            para ofrecer procesos educativos y administrativos modernos, confiables y al
+            servicio de nuestras comunidades.
           </p>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href="/nosotros"
+              className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
+            >
+              Conoce quiénes somos
+            </Link>
+            <Link
+              href="/contacto"
+              className="rounded-full border border-brand px-6 py-3 text-sm font-semibold text-brand transition-colors hover:bg-white"
+            >
+              Hablemos
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-2xl font-bold text-brand-dark sm:text-3xl">Qué hacemos</h2>
+        <p className="mt-2 max-w-2xl text-foreground/70">
+          Trabajamos en distintas áreas para fortalecer la educación de principio a fin.
+        </p>
+
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {AREAS.map((area) => (
+            <div
+              key={area.title}
+              className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div className="mb-4 h-10 w-10 rounded-lg bg-accent-light" aria-hidden />
+              <h3 className="text-lg font-semibold text-brand-dark">{area.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">{area.description}</p>
+            </div>
+          ))}
         </div>
-      </main>
+      </section>
+
+      <section className="bg-brand-dark">
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-4 px-6 py-16 text-white">
+          <h2 className="text-2xl font-bold sm:text-3xl">¿Quieres saber más sobre nuestro trabajo?</h2>
+          <p className="max-w-xl text-white/80">
+            Conoce nuestros proyectos en marcha o ponte en contacto con nuestro equipo.
+          </p>
+          <Link
+            href="/proyectos"
+            className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-accent-light"
+          >
+            Ver proyectos
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
