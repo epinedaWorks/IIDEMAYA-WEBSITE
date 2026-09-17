@@ -12,6 +12,7 @@ type Estado = "idle" | "enviando" | "ok" | "error";
 
 const campo = "rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-brand w-full";
 const etiqueta = "text-sm font-medium text-foreground/80";
+const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Cuenta cuántos campos requeridos del form están completos para la barra
 // de progreso. Los radios se agrupan por name (un grupo cuenta como 1 campo,
@@ -52,11 +53,13 @@ export default function PostulacionForm() {
   const [errorMsg, setErrorMsg] = useState("");
   const [progreso, setProgreso] = useState(0);
   const [correo, setCorreo] = useState("");
+  const [correoTocado, setCorreoTocado] = useState(false);
   const [confirmCorreo, setConfirmCorreo] = useState("");
   const [avisoPortapapeles, setAvisoPortapapeles] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const correoInvalido = correo.length > 0 && !CORREO_RE.test(correo.trim());
   const correoNoCoincide = confirmCorreo.length > 0 && correo.trim().toLowerCase() !== confirmCorreo.trim().toLowerCase();
 
   function actualizarProgreso() {
@@ -72,7 +75,7 @@ export default function PostulacionForm() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (correoNoCoincide) return;
+    if (correoInvalido || correoNoCoincide) return;
     const form = e.currentTarget;
     const data = new FormData(form);
 
@@ -146,8 +149,15 @@ export default function PostulacionForm() {
               maxLength={200}
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
-              className={campo}
+              onBlur={() => setCorreoTocado(true)}
+              aria-invalid={correoTocado && correoInvalido}
+              className={`${campo} ${correoTocado && correoInvalido ? "border-red-400 focus:border-red-500" : ""}`}
             />
+            {correoTocado && correoInvalido && (
+              <span className="text-xs font-medium text-red-600">
+                Ingresa un correo válido (con @ y dominio, ej. nombre@correo.com).
+              </span>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="confirmCorreo" className={etiqueta}>Confirma tu correo</label>
@@ -264,7 +274,7 @@ export default function PostulacionForm() {
 
       <button
         type="submit"
-        disabled={estado === "enviando" || correoNoCoincide}
+        disabled={estado === "enviando" || correoInvalido || correoNoCoincide}
         className="self-start rounded-full bg-brand px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
       >
         {estado === "enviando" ? "Enviando…" : "Enviar postulación"}
