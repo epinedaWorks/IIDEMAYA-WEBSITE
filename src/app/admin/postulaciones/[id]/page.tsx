@@ -111,6 +111,12 @@ export default async function DetallePostulacion({
               Descargar documento adicional
             </a>
           )}
+          <a
+            href={`/api/admin/postulaciones/${postulacion.id}/pdf`}
+            className="rounded-full bg-accent-light px-4 py-2 text-sm font-medium text-accent hover:brightness-95"
+          >
+            Descargar cuestionario en PDF
+          </a>
         </div>
       </section>
 

@@ -21,7 +21,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </nav>
             </div>
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-foreground/60">{session.user?.email}</span>
+              <Link href="/admin/cuenta" className="text-foreground/60 hover:text-brand">
+                {session.user?.email}
+              </Link>
               <SignOutButton />
             </div>
           </div>
