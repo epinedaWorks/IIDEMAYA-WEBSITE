@@ -125,7 +125,7 @@ export async function POST(req: Request) {
     },
   });
 
-  await sendPostulacionEmails({ id: postulacion.id, nombre, correo });
+  await sendPostulacionEmails(postulacion);
 
   return NextResponse.json({ ok: true });
 }

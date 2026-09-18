@@ -1,5 +1,8 @@
+import type { Postulacion } from "@prisma/client";
 import { getListaCorreos, SETTING_CONTACT_EMAIL, SETTING_POSTULACION_EMAIL } from "./settings";
 import { formatearFechaHoraGt } from "./fecha";
+import { obtenerArchivoPostulacion } from "./uploads";
+import { generarPdfPostulacion } from "./postulacion-pdf";
 
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.EMAIL_FROM || "IIDEMAYA <no-reply@iidemaya.org.gt>";
@@ -62,11 +65,14 @@ function esperar(ms: number): Promise<void> {
 // Llamada directa a la API de Resend con reintento ante 429 (límite de
 // peticiones por segundo). Nunca lanza: si falla, quien llama decide qué
 // mostrarle a la persona.
+type Adjunto = { filename: string; content: string }; // content en base64
+
 async function enviar(opts: {
   to: string | string[];
   subject: string;
   html: string;
   replyTo?: string;
+  attachments?: Adjunto[];
 }): Promise<ResultadoEnvio> {
   if (!API_KEY) {
     sinConfig();
@@ -87,6 +93,7 @@ async function enviar(opts: {
           subject: opts.subject,
           html: opts.html,
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+          ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
         }),
       });
       if (res.ok) return { ok: true };
@@ -151,37 +158,63 @@ export async function sendContactEmail(d: DatosContacto): Promise<ResultadoEnvio
 }
 
 // ---------- Postulaciones (/talento) ----------
-export type DatosPostulacion = {
-  id: string;
-  nombre: string;
-  correo: string;
-};
 
-export async function sendPostulacionEmails(d: DatosPostulacion): Promise<ResultadoEnvio> {
+// Descarga un archivo guardado en Netlify Blobs y lo deja listo como
+// adjunto de Resend (base64). Si no se puede leer, devuelve null en vez de
+// lanzar — un adjunto faltante no debe tumbar el aviso completo.
+async function adjuntoDesdeBlobKey(key: string, nombrePorDefecto: string): Promise<Adjunto | null> {
+  try {
+    const archivo = await obtenerArchivoPostulacion(key);
+    if (!archivo) return null;
+    const nombreOriginal = (archivo.metadata?.nombreOriginal as string) || nombrePorDefecto;
+    const content = Buffer.from(archivo.data as ArrayBuffer).toString("base64");
+    return { filename: nombreOriginal, content };
+  } catch (err) {
+    console.error("[email] no se pudo adjuntar el archivo", key, err);
+    return null;
+  }
+}
+
+export async function sendPostulacionEmails(postulacion: Postulacion): Promise<ResultadoEnvio> {
   const correosEquipo = await getCorreosPostulacion();
   let resultadoEquipo: ResultadoEnvio = { ok: false, motivo: "sin destinatario" };
   if (correosEquipo.length) {
+    // El CV y el PDF del cuestionario van adjuntos solo en el aviso al
+    // equipo — a quien se postula no hace falta reenviarle su propio CV.
+    const [cvAdjunto, pdfAdjunto] = await Promise.all([
+      adjuntoDesdeBlobKey(postulacion.cvBlobKey, "cv.pdf"),
+      generarPdfPostulacion(postulacion)
+        .then((buf) => ({ filename: "cuestionario.pdf", content: buf.toString("base64") }))
+        .catch((err) => {
+          console.error("[email] no se pudo generar el PDF del cuestionario:", err);
+          return null;
+        }),
+    ]);
+    const attachments = [cvAdjunto, pdfAdjunto].filter((a): a is Adjunto => a !== null);
+
     resultadoEquipo = await enviar({
       to: correosEquipo,
-      subject: `Nueva postulación: ${d.nombre}`,
+      subject: `Nueva postulación: ${postulacion.nombre}`,
       html: layout(
         "Nueva postulación recibida",
         `${filas([
-          ["Nombre", d.nombre],
-          ["Correo", d.correo],
+          ["Nombre", postulacion.nombre],
+          ["Correo", postulacion.correo],
           ["Recibido", formatearFechaHoraGt(new Date())],
         ])}
-        <p style="margin-top:16px"><a href="${ADMIN_URL}/postulaciones/${d.id}" style="color:#0f5132">Ver postulación completa →</a></p>`
+        <p style="font-size:13px;color:#666;margin-top:12px">Se adjunta su CV y un PDF con las respuestas del cuestionario.</p>
+        <p style="margin-top:16px"><a href="${ADMIN_URL}/postulaciones/${postulacion.id}" style="color:#0f5132">Ver postulación completa →</a></p>`
       ),
-      replyTo: d.correo,
+      replyTo: postulacion.correo,
+      attachments,
     });
   }
 
   await enviar({
-    to: d.correo,
+    to: postulacion.correo,
     subject: "Recibimos tu postulación · IIDEMAYA",
     html: layout(
-      `¡Gracias por postularte, ${esc(d.nombre.split(" ")[0])}!`,
+      `¡Gracias por postularte, ${esc(postulacion.nombre.split(" ")[0])}!`,
       `<p style="font-size:14px;line-height:1.6">Recibimos tu información y tu CV. El equipo la revisará y te contactará a este correo si tu perfil avanza en el proceso.</p>`
     ),
     replyTo: correosEquipo[0],
