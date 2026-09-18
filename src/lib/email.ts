@@ -103,7 +103,7 @@ async function enviar(opts: {
         continue;
       }
       console.error("[email] Resend respondió", res.status, cuerpo);
-      return { ok: false, motivo: `HTTP ${res.status}` };
+      return { ok: false, motivo: `HTTP ${res.status}: ${cuerpo}` };
     } catch (err) {
       if (intento < INTENTOS) {
         await esperar(500 * intento);

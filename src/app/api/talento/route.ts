@@ -125,7 +125,14 @@ export async function POST(req: Request) {
     },
   });
 
-  await sendPostulacionEmails(postulacion);
+  // TODO(diagnóstico temporal): exponer el resultado real del envío para
+  // depurar por qué no está llegando el aviso al equipo — quitar después.
+  let debugEmail: unknown = null;
+  try {
+    debugEmail = await sendPostulacionEmails(postulacion);
+  } catch (err) {
+    debugEmail = { threw: true, message: err instanceof Error ? err.message : String(err) };
+  }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, debugEmail });
 }
