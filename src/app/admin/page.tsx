@@ -44,8 +44,7 @@ export default async function AdminDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-brand-dark">Postulaciones</h1>
           <p className="mt-1 text-sm text-foreground/60">
-            {postulaciones.length} postulación{postulaciones.length === 1 ? "" : "es"} recibida
-            {postulaciones.length === 1 ? "" : "s"}
+            {postulaciones.length} {postulaciones.length === 1 ? "postulación recibida" : "postulaciones recibidas"}
           </p>
         </div>
         {postulaciones.length > 0 && (
