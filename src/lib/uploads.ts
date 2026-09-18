@@ -71,3 +71,9 @@ export async function obtenerArchivoPostulacion(key: string) {
   const store = getStore("postulaciones");
   return store.getWithMetadata(key, { type: "arrayBuffer" });
 }
+
+// Al eliminar una postulación, para no dejar archivos huérfanos en el store.
+export async function eliminarArchivoPostulacion(key: string) {
+  const store = getStore("postulaciones");
+  await store.delete(key);
+}

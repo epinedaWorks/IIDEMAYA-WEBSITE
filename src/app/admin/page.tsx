@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
+import { formatearFechaGt } from "@/lib/fecha";
 
 export const metadata: Metadata = { title: "Postulaciones | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
@@ -39,11 +40,23 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-brand-dark">Postulaciones</h1>
-      <p className="mt-1 text-sm text-foreground/60">
-        {postulaciones.length} postulación{postulaciones.length === 1 ? "" : "es"} recibida
-        {postulaciones.length === 1 ? "" : "s"}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-dark">Postulaciones</h1>
+          <p className="mt-1 text-sm text-foreground/60">
+            {postulaciones.length} postulación{postulaciones.length === 1 ? "" : "es"} recibida
+            {postulaciones.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        {postulaciones.length > 0 && (
+          <a
+            href="/api/admin/postulaciones/exportar"
+            className="rounded-full border border-brand px-5 py-2 text-sm font-medium text-brand hover:bg-brand-light"
+          >
+            Exportar a Excel
+          </a>
+        )}
+      </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
         {postulaciones.length === 0 ? (
@@ -70,7 +83,7 @@ export default async function AdminDashboard() {
                   </td>
                   <td className="px-5 py-3 text-foreground/70">{p.correo}</td>
                   <td className="px-5 py-3 text-foreground/70">
-                    {p.createdAt.toLocaleDateString("es-GT", { year: "numeric", month: "short", day: "numeric" })}
+                    {formatearFechaGt(p.createdAt, { year: "numeric", month: "short", day: "numeric" })}
                   </td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${ESTADO_COLOR[p.estado]}`}>

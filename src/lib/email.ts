@@ -1,4 +1,5 @@
 import { getListaCorreos, SETTING_CONTACT_EMAIL, SETTING_POSTULACION_EMAIL } from "./settings";
+import { formatearFechaHoraGt } from "./fecha";
 
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.EMAIL_FROM || "IIDEMAYA <no-reply@iidemaya.org.gt>";
@@ -168,6 +169,7 @@ export async function sendPostulacionEmails(d: DatosPostulacion): Promise<Result
         `${filas([
           ["Nombre", d.nombre],
           ["Correo", d.correo],
+          ["Recibido", formatearFechaHoraGt(new Date())],
         ])}
         <p style="margin-top:16px"><a href="${ADMIN_URL}/postulaciones/${d.id}" style="color:#0f5132">Ver postulación completa →</a></p>`
       ),

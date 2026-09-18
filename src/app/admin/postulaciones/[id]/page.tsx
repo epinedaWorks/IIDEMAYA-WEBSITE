@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
+import { formatearFechaGt, formatearFechaHoraGt } from "@/lib/fecha";
 import {
   PREGUNTAS_TEXTO,
   PREGUNTA_DIA_NO_DISPONIBLE,
   PREGUNTAS_SI_NO,
   OPCIONES_MODALIDAD,
 } from "@/lib/postulacion-preguntas";
-import { agregarComentario, cambiarEstado } from "./actions";
+import { agregarComentario, cambiarEstado, eliminarPostulacion } from "./actions";
+import EliminarPostulacionBoton from "@/components/admin/EliminarPostulacionBoton";
 
 export const metadata: Metadata = { title: "Postulación | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
@@ -50,6 +52,7 @@ export default async function DetallePostulacion({
 
   const agregarComentarioConId = agregarComentario.bind(null, postulacion.id);
   const cambiarEstadoConId = cambiarEstado.bind(null, postulacion.id);
+  const eliminarPostulacionConId = eliminarPostulacion.bind(null, postulacion.id);
 
   return (
     <div>
@@ -65,32 +68,30 @@ export default async function DetallePostulacion({
             {postulacion.telefono ? ` · ${postulacion.telefono}` : ""}
           </p>
           <p className="mt-1 text-xs text-foreground/50">
-            Enviado el{" "}
-            {postulacion.createdAt.toLocaleDateString("es-GT", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            Enviado el {formatearFechaGt(postulacion.createdAt, { year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
 
-        <form action={cambiarEstadoConId} className="flex items-center gap-2">
-          <select
-            name="estado"
-            defaultValue={postulacion.estado}
-            className="rounded-lg border border-black/10 px-3 py-2 text-sm"
-          >
-            {ESTADOS.map((e) => (
-              <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-          >
-            Actualizar estado
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={cambiarEstadoConId} className="flex items-center gap-2">
+            <select
+              name="estado"
+              defaultValue={postulacion.estado}
+              className="rounded-lg border border-black/10 px-3 py-2 text-sm"
+            >
+              {ESTADOS.map((e) => (
+                <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+            >
+              Actualizar estado
+            </button>
+          </form>
+          <EliminarPostulacionBoton nombre={postulacion.nombre} action={eliminarPostulacionConId} />
+        </div>
       </div>
 
       <section className="mt-8 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
@@ -161,8 +162,7 @@ export default async function DetallePostulacion({
             <div key={c.id} className="rounded-lg bg-brand-light/40 p-3 text-sm">
               <p className="whitespace-pre-wrap">{c.texto}</p>
               <p className="mt-1 text-xs text-foreground/50">
-                {c.admin.name || c.admin.email} ·{" "}
-                {c.createdAt.toLocaleDateString("es-GT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {c.admin.name || c.admin.email} · {formatearFechaHoraGt(c.createdAt)}
               </p>
             </div>
           ))}
