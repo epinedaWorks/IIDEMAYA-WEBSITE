@@ -8,9 +8,11 @@ import { useState } from "react";
 export default function EliminarPostulacionBoton({
   nombre,
   action,
+  compacto = false,
 }: {
   nombre: string;
   action: () => void | Promise<void>;
+  compacto?: boolean;
 }) {
   const [confirmando, setConfirmando] = useState(false);
 
@@ -19,9 +21,14 @@ export default function EliminarPostulacionBoton({
       <button
         type="button"
         onClick={() => setConfirmando(true)}
-        className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        aria-label={`Eliminar postulación de ${nombre}`}
+        className={
+          compacto
+            ? "rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 active:scale-95"
+            : "rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        }
       >
-        Eliminar postulación
+        {compacto ? "Eliminar" : "Eliminar postulación"}
       </button>
 
       {confirmando && (

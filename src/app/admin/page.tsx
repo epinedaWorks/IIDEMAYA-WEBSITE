@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
-import { formatearFechaGt } from "@/lib/fecha";
+import { formatearFechaHoraGt } from "@/lib/fecha";
+import EliminarPostulacionBoton from "@/components/admin/EliminarPostulacionBoton";
+import { eliminarPostulacion } from "./postulaciones/[id]/actions";
 
 export const metadata: Metadata = { title: "Postulaciones | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
@@ -70,6 +72,7 @@ export default async function AdminDashboard() {
                 <th className="px-5 py-3 font-semibold">Correo</th>
                 <th className="px-5 py-3 font-semibold">Fecha</th>
                 <th className="px-5 py-3 font-semibold">Estado</th>
+                <th className="px-5 py-3 text-right font-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -81,13 +84,20 @@ export default async function AdminDashboard() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-foreground/70">{p.correo}</td>
-                  <td className="px-5 py-3 text-foreground/70">
-                    {formatearFechaGt(p.createdAt, { year: "numeric", month: "short", day: "numeric" })}
+                  <td className="whitespace-nowrap px-5 py-3 text-foreground/70">
+                    {formatearFechaHoraGt(p.createdAt)}
                   </td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${ESTADO_COLOR[p.estado]}`}>
                       {ESTADO_LABEL[p.estado]}
                     </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <EliminarPostulacionBoton
+                      compacto
+                      nombre={p.nombre}
+                      action={eliminarPostulacion.bind(null, p.id)}
+                    />
                   </td>
                 </tr>
               ))}
