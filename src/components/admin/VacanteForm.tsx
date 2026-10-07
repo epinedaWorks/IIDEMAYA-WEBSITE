@@ -44,7 +44,7 @@ export default function VacanteForm({
           required
           maxLength={150}
           defaultValue={valores?.titulo}
-          placeholder="Ej. Desarrollador(a) Junior"
+          placeholder="Ej. Desarrollador Junior"
           className={campo}
         />
 
