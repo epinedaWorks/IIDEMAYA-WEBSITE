@@ -200,6 +200,7 @@ export async function sendPostulacionEmails(postulacion: Postulacion): Promise<R
         `${filas([
           ["Nombre", postulacion.nombre],
           ["Correo", postulacion.correo],
+          ["Posición", postulacion.vacanteTitulo ?? "Postulación general"],
           ["Recibido", formatearFechaHoraGt(new Date())],
         ])}
         <p style="font-size:13px;color:#666;margin-top:12px">Se adjunta su CV y un PDF con las respuestas del cuestionario.</p>

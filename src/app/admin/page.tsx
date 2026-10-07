@@ -36,6 +36,7 @@ export default async function AdminDashboard() {
       correo: true,
       createdAt: true,
       estado: true,
+      vacanteTitulo: true,
       modalidadTrabajo: true,
     },
   });
@@ -70,6 +71,7 @@ export default async function AdminDashboard() {
               <tr>
                 <th className="px-5 py-3 font-semibold">Nombre</th>
                 <th className="px-5 py-3 font-semibold">Correo</th>
+                <th className="px-5 py-3 font-semibold">Posición</th>
                 <th className="px-5 py-3 font-semibold">Fecha</th>
                 <th className="px-5 py-3 font-semibold">Estado</th>
                 <th className="px-5 py-3 text-right font-semibold">Acciones</th>
@@ -84,6 +86,9 @@ export default async function AdminDashboard() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-foreground/70">{p.correo}</td>
+                  <td className="px-5 py-3 text-foreground/70">
+                    {p.vacanteTitulo ?? <span className="text-foreground/40">General</span>}
+                  </td>
                   <td className="whitespace-nowrap px-5 py-3 text-foreground/70">
                     {formatearFechaHoraGt(p.createdAt)}
                   </td>

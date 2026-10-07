@@ -54,6 +54,7 @@ export function generarPdfPostulacion(postulacion: Postulacion): Promise<Buffer>
       .fontSize(10)
       .fillColor(GRIS)
       .text(`${postulacion.correo}${postulacion.telefono ? " · " + postulacion.telefono : ""}`);
+    doc.text(`Posición: ${postulacion.vacanteTitulo ?? "Postulación general"}`);
     doc.text(`Enviado el ${formatearFechaHoraGt(postulacion.createdAt)}`);
     doc.text(`Estado: ${ESTADO_LABEL[postulacion.estado] || postulacion.estado}`);
     doc.moveDown(1);

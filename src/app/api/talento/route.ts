@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { guardarArchivoPostulacion } from "@/lib/uploads";
 import { sendPostulacionEmails } from "@/lib/email";
+import { listarVacantesActivas } from "@/lib/vacantes";
+import { VACANTE_GENERAL } from "@/lib/vacantes-const";
 import {
   PREGUNTAS_TEXTO,
   PREGUNTA_DIA_NO_DISPONIBLE,
@@ -77,6 +79,29 @@ export async function POST(req: Request) {
     siNoValores[p.key] = valor;
   }
 
+  // Posición: solo se exige si hay vacantes activas (el formulario muestra
+  // la lista únicamente en ese caso). "general" = sin posición específica.
+  let vacanteId: string | null = null;
+  let vacanteTitulo: string | null = null;
+  const vacantesActivas = await listarVacantesActivas();
+  if (vacantesActivas.length > 0) {
+    const seleccion = form.get("vacanteId");
+    if (typeof seleccion !== "string" || !seleccion) {
+      return NextResponse.json({ error: "Selecciona la posición a la que aplicas." }, { status: 400 });
+    }
+    if (seleccion !== VACANTE_GENERAL) {
+      const vacante = vacantesActivas.find((v) => v.id === seleccion);
+      if (!vacante) {
+        return NextResponse.json(
+          { error: "La posición seleccionada ya no está disponible. Recarga la página y elige otra." },
+          { status: 400 }
+        );
+      }
+      vacanteId = vacante.id;
+      vacanteTitulo = vacante.titulo;
+    }
+  }
+
   const cvFile = form.get("cv");
   if (!(cvFile instanceof File) || cvFile.size === 0) {
     return NextResponse.json({ error: "Adjunta tu CV." }, { status: 400 });
@@ -122,6 +147,8 @@ export async function POST(req: Request) {
       trabajaActualmente: siNoValores.trabajaActualmente,
       cvBlobKey,
       documentoBlobKey,
+      vacanteId,
+      vacanteTitulo,
     },
   });
 

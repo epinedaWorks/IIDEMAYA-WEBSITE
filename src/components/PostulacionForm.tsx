@@ -7,6 +7,7 @@ import {
   PREGUNTAS_SI_NO,
   OPCIONES_MODALIDAD,
 } from "@/lib/postulacion-preguntas";
+import { VACANTE_GENERAL } from "@/lib/vacantes-const";
 
 type Estado = "idle" | "enviando" | "ok" | "error";
 
@@ -48,7 +49,15 @@ function bloquearPortapapeles(e: ClipboardEvent<HTMLElement>) {
   e.preventDefault();
 }
 
-export default function PostulacionForm() {
+type VacanteOpcion = { id: string; titulo: string };
+
+export default function PostulacionForm({
+  vacantes = [],
+  vacanteInicial,
+}: {
+  vacantes?: VacanteOpcion[];
+  vacanteInicial?: string;
+}) {
   const [estado, setEstado] = useState<Estado>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [progreso, setProgreso] = useState(0);
@@ -136,6 +145,28 @@ export default function PostulacionForm() {
           />
         </div>
       </div>
+
+      {vacantes.length > 0 && (
+        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-lg font-semibold text-brand-dark">Posición</h2>
+          <div className="mt-4 flex flex-col gap-1.5">
+            <label htmlFor="vacanteId" className={etiqueta}>{n()}. ¿A qué posición aplica?</label>
+            <select
+              id="vacanteId"
+              name="vacanteId"
+              required
+              defaultValue={vacanteInicial ?? ""}
+              className={campo}
+            >
+              <option value="" disabled>Selecciona una posición</option>
+              {vacantes.map((v) => (
+                <option key={v.id} value={v.id}>{v.titulo}</option>
+              ))}
+              <option value={VACANTE_GENERAL}>Otra posición / postulación general</option>
+            </select>
+          </div>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-brand-dark">Datos de contacto</h2>

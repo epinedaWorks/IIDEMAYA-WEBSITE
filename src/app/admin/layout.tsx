@@ -18,6 +18,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin" className="rounded-full px-3 py-1.5 transition-colors hover:bg-brand-light hover:text-brand active:scale-95 active:bg-brand-light/70">
                   Postulaciones
                 </Link>
+                <Link href="/admin/vacantes" className="rounded-full px-3 py-1.5 transition-colors hover:bg-brand-light hover:text-brand active:scale-95 active:bg-brand-light/70">
+                  Vacantes
+                </Link>
                 <Link href="/admin/anuncios" className="rounded-full px-3 py-1.5 transition-colors hover:bg-brand-light hover:text-brand active:scale-95 active:bg-brand-light/70">
                   Anuncios
                 </Link>

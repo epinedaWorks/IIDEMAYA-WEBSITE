@@ -67,6 +67,9 @@ export default async function DetallePostulacion({
             {postulacion.correo}
             {postulacion.telefono ? ` · ${postulacion.telefono}` : ""}
           </p>
+          <p className="mt-1 text-sm font-medium text-brand">
+            Posición: {postulacion.vacanteTitulo ?? "Postulación general"}
+          </p>
           <p className="mt-1 text-xs text-foreground/50">
             Enviado el {formatearFechaGt(postulacion.createdAt, { year: "numeric", month: "long", day: "numeric" })}
           </p>

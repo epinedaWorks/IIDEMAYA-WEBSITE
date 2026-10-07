@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
 import PostulacionForm from "@/components/PostulacionForm";
+import { listarVacantesActivas } from "@/lib/vacantes";
 
-// No aparece en el menú ni en el home — evita que buscadores la indexen.
+// Aparece en /vacantes (botón "Postularme"), pero no en el menú ni en el
+// home — se mantiene fuera de los buscadores.
 export const metadata: Metadata = {
   title: "Postulación | IIDEMAYA",
   description: "Formulario de postulación para IIDEMAYA.",
   robots: { index: false, follow: false },
 };
+export const dynamic = "force-dynamic";
 
-export default function Talento() {
+export default async function Talento({
+  searchParams,
+}: {
+  searchParams: Promise<{ vacante?: string }>;
+}) {
+  const [vacantes, { vacante }] = await Promise.all([listarVacantesActivas(), searchParams]);
+
   return (
     <div>
       <section className="bg-brand-light">
@@ -25,7 +34,10 @@ export default function Talento() {
       </section>
 
       <section className="mx-auto max-w-3xl px-6 py-12">
-        <PostulacionForm />
+        <PostulacionForm
+          vacantes={vacantes.map((v) => ({ id: v.id, titulo: v.titulo }))}
+          vacanteInicial={vacantes.some((v) => v.id === vacante) ? vacante : undefined}
+        />
       </section>
     </div>
   );

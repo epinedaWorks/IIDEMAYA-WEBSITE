@@ -90,8 +90,34 @@ model Postulacion {
   cvBlobKey        String
   documentoBlobKey String?
 
+  // Posición a la que aplica. vacanteTitulo guarda el nombre tal como se veía
+  // al postular, para que el historial no cambie si la vacante se renombra.
+  // Null en ambos = postulación general (o anterior a que existieran vacantes).
+  vacante       Vacante? @relation(fields: [vacanteId], references: [id], onDelete: SetNull)
+  vacanteId     String?
+  vacanteTitulo String?
+
   estado      EstadoPostulacion @default(NUEVA)
   comentarios Comentario[]
+
+  @@index([vacanteId])
+}
+
+// Plaza abierta que se muestra en /vacantes y en la lista de /talento. El
+// equipo las crea, edita, habilita o deshabilita desde el panel admin.
+// funciones y requisitos son listas cortas (una viñeta por elemento).
+model Vacante {
+  id          String        @id @default(cuid())
+  titulo      String
+  resumen     String
+  modalidad   String
+  funciones   String[]
+  requisitos  String[]
+  activa      Boolean       @default(true)
+  orden       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  postulaciones Postulacion[]
 }
 
 // Ajustes editables desde el panel (correos que reciben avisos de contacto
