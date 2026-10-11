@@ -47,6 +47,16 @@ enum EstadoPostulacion {
   CONTRATADA
 }
 
+// Qué tanto interesa la persona a la empresa. Es independiente del estado:
+// permite marcar rápido a quién mirar primero o a quién descartar, sin
+// depender de en qué etapa del proceso va.
+enum InteresPostulacion {
+  SIN_VALORAR
+  POSIBLE_BUEN_CANDIDATO
+  CON_INTERES
+  DESCARTADO
+}
+
 // Una postulación enviada desde /talento. Las respuestas de opinión van en
 // columnas separadas (String) en vez de un solo Json: son pocas preguntas
 // fijas y así se pueden filtrar/exportar directo por SQL si el equipo lo
@@ -103,6 +113,8 @@ model Postulacion {
   resumenIAAt DateTime?
 
   estado      EstadoPostulacion @default(NUEVA)
+  // Valoración de la empresa sobre la persona, aparte del estado del proceso.
+  interes     InteresPostulacion @default(SIN_VALORAR)
   comentarios Comentario[]
 
   @@index([vacanteId])

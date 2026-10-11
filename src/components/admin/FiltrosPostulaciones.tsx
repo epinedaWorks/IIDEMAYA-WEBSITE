@@ -3,35 +3,30 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { INTERESES, INTERES_LABEL } from "@/lib/postulacion-interes";
+import { consultaDeFiltros, hayFiltros, type Filtros } from "@/lib/postulacion-filtros";
 
 const campo =
   "rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand";
 
-// Filtros de la lista. Se aplican en cuanto cambia cualquier campo (la
-// posición y las fechas viajan en la dirección, así que se pueden compartir
-// o recargar sin perder el filtro).
+// Filtros de la lista. Se aplican en cuanto cambia cualquier campo (viajan
+// en la dirección, así que se pueden compartir o recargar sin perderlos).
 export default function FiltrosPostulaciones({
   vacantes,
   inicial,
 }: {
   vacantes: { id: string; titulo: string }[];
-  inicial: { posicion: string; desde: string; hasta: string };
+  inicial: Filtros;
 }) {
   const router = useRouter();
-  const [posicion, setPosicion] = useState(inicial.posicion);
-  const [desde, setDesde] = useState(inicial.desde);
-  const [hasta, setHasta] = useState(inicial.hasta);
+  const [filtros, setFiltros] = useState<Filtros>(inicial);
 
-  function aplicar(nuevo: { posicion: string; desde: string; hasta: string }) {
-    const params = new URLSearchParams();
-    if (nuevo.posicion) params.set("posicion", nuevo.posicion);
-    if (nuevo.desde) params.set("desde", nuevo.desde);
-    if (nuevo.hasta) params.set("hasta", nuevo.hasta);
-    const consulta = params.toString();
+  function cambiar(parcial: Partial<Filtros>) {
+    const nuevos = { ...filtros, ...parcial };
+    setFiltros(nuevos);
+    const consulta = consultaDeFiltros(nuevos);
     router.replace(consulta ? `/admin?${consulta}` : "/admin");
   }
-
-  const hayFiltros = Boolean(posicion || desde || hasta);
 
   return (
     <div className="mt-6 flex flex-wrap items-end gap-4 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
@@ -41,11 +36,8 @@ export default function FiltrosPostulaciones({
         </label>
         <select
           id="filtro-posicion"
-          value={posicion}
-          onChange={(e) => {
-            setPosicion(e.target.value);
-            aplicar({ posicion: e.target.value, desde, hasta });
-          }}
+          value={filtros.posicion}
+          onChange={(e) => cambiar({ posicion: e.target.value })}
           className={`${campo} min-w-[16rem]`}
         >
           <option value="">Todas</option>
@@ -59,18 +51,34 @@ export default function FiltrosPostulaciones({
       </div>
 
       <div className="flex flex-col gap-1">
+        <label htmlFor="filtro-interes" className="text-xs font-semibold text-foreground/60">
+          Interés
+        </label>
+        <select
+          id="filtro-interes"
+          value={filtros.interes}
+          onChange={(e) => cambiar({ interes: e.target.value })}
+          className={`${campo} min-w-[13rem]`}
+        >
+          <option value="">Todos</option>
+          {INTERESES.map((i) => (
+            <option key={i} value={i}>
+              {INTERES_LABEL[i]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
         <label htmlFor="filtro-desde" className="text-xs font-semibold text-foreground/60">
           Desde
         </label>
         <input
           id="filtro-desde"
           type="date"
-          value={desde}
-          max={hasta || undefined}
-          onChange={(e) => {
-            setDesde(e.target.value);
-            aplicar({ posicion, desde: e.target.value, hasta });
-          }}
+          value={filtros.desde}
+          max={filtros.hasta || undefined}
+          onChange={(e) => cambiar({ desde: e.target.value })}
           className={campo}
         />
       </div>
@@ -82,24 +90,17 @@ export default function FiltrosPostulaciones({
         <input
           id="filtro-hasta"
           type="date"
-          value={hasta}
-          min={desde || undefined}
-          onChange={(e) => {
-            setHasta(e.target.value);
-            aplicar({ posicion, desde, hasta: e.target.value });
-          }}
+          value={filtros.hasta}
+          min={filtros.desde || undefined}
+          onChange={(e) => cambiar({ hasta: e.target.value })}
           className={campo}
         />
       </div>
 
-      {hayFiltros && (
+      {hayFiltros(filtros) && (
         <Link
           href="/admin"
-          onClick={() => {
-            setPosicion("");
-            setDesde("");
-            setHasta("");
-          }}
+          onClick={() => setFiltros({ posicion: "", desde: "", hasta: "", interes: "" })}
           className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium transition hover:bg-black/5 active:scale-95"
         >
           Limpiar filtros

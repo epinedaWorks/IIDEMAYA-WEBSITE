@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatearFechaHoraGt } from "@/lib/fecha";
+import { INTERES_LABEL } from "@/lib/postulacion-interes";
 import {
   PREGUNTAS_TEXTO,
   PREGUNTA_DIA_NO_DISPONIBLE,
@@ -47,6 +48,7 @@ export async function GET() {
     { header: "Teléfono", key: "telefono", width: 16 },
     { header: "Posición", key: "posicion", width: 30 },
     { header: "Estado", key: "estado", width: 14 },
+    { header: "Interés", key: "interes", width: 24 },
     { header: "Modalidad de trabajo", key: "modalidad", width: 18 },
     ...PREGUNTAS_SI_NO.map((p) => ({ header: p.label, key: p.key, width: 22 })),
     ...PREGUNTAS_TEXTO.map((p) => ({ header: p.label, key: p.key, width: 40 })),
@@ -67,6 +69,7 @@ export async function GET() {
       telefono: post.telefono || "",
       posicion: post.vacanteTitulo ?? "Postulación general",
       estado: ESTADO_LABEL[post.estado] || post.estado,
+      interes: INTERES_LABEL[post.interes] || post.interes,
       modalidad: OPCIONES_MODALIDAD.find((o) => o.value === post.modalidadTrabajo)?.label || post.modalidadTrabajo,
       diaNoDisponible: post.diaNoDisponible || "",
     };

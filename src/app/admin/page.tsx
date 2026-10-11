@@ -1,55 +1,29 @@
 import type { Metadata } from "next";
-import type { Prisma } from "@prisma/client";
 import { requireAdminSession } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
 import { formatearFechaHoraGt } from "@/lib/fecha";
 import { iaConfigurada } from "@/lib/resumen-ia";
+import { consultaDeFiltros, hayFiltros, leerFiltros, whereDeFiltros } from "@/lib/postulacion-filtros";
 import FilaPostulacion from "@/components/admin/FilaPostulacion";
 import FiltrosPostulaciones from "@/components/admin/FiltrosPostulaciones";
 
 export const metadata: Metadata = { title: "Postulaciones | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
 
-const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-// Las fechas del filtro son días de Guatemala (UTC-6, sin horario de
-// verano): "desde" arranca a las 00:00 y "hasta" incluye todo ese día.
-function inicioDelDia(dia: string): Date | null {
-  if (!FECHA_RE.test(dia)) return null;
-  const fecha = new Date(`${dia}T00:00:00-06:00`);
-  return Number.isNaN(fecha.getTime()) ? null : fecha;
-}
-function finDelDia(dia: string): Date | null {
-  if (!FECHA_RE.test(dia)) return null;
-  const fecha = new Date(`${dia}T23:59:59.999-06:00`);
-  return Number.isNaN(fecha.getTime()) ? null : fecha;
-}
-
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ posicion?: string; desde?: string; hasta?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await requireAdminSession();
-  const { posicion = "", desde = "", hasta = "" } = await searchParams;
 
-  const where: Prisma.PostulacionWhereInput = {};
-  if (posicion === "general") where.vacanteId = null;
-  else if (posicion) where.vacanteId = posicion;
-
-  const fechaDesde = inicioDelDia(desde);
-  const fechaHasta = finDelDia(hasta);
-  if (fechaDesde || fechaHasta) {
-    where.createdAt = {
-      ...(fechaDesde ? { gte: fechaDesde } : {}),
-      ...(fechaHasta ? { lte: fechaHasta } : {}),
-    };
-  }
-  const hayFiltros = Boolean(posicion || fechaDesde || fechaHasta);
+  const filtros = leerFiltros(await searchParams);
+  const consulta = consultaDeFiltros(filtros);
+  const filtrado = hayFiltros(filtros);
 
   const [postulaciones, total, vacantes] = await Promise.all([
     prisma.postulacion.findMany({
-      where,
+      where: whereDeFiltros(filtros),
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -57,6 +31,7 @@ export default async function AdminDashboard({
         correo: true,
         createdAt: true,
         estado: true,
+        interes: true,
         vacanteTitulo: true,
         resumenIA: true,
       },
@@ -71,12 +46,14 @@ export default async function AdminDashboard({
   const ia = iaConfigurada();
 
   return (
-    <div>
+    // La tabla tiene muchas columnas: se ensancha un poco más que el resto
+    // del panel en pantallas grandes.
+    <div className="xl:-mx-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-brand-dark">Postulaciones</h1>
           <p className="mt-1 text-sm text-foreground/60">
-            {hayFiltros
+            {filtrado
               ? `${postulaciones.length} de ${total} ${total === 1 ? "postulación" : "postulaciones"}`
               : `${total} ${total === 1 ? "postulación recibida" : "postulaciones recibidas"}`}
           </p>
@@ -91,12 +68,7 @@ export default async function AdminDashboard({
         )}
       </div>
 
-      {total > 0 && (
-        <FiltrosPostulaciones
-          vacantes={vacantes}
-          inicial={{ posicion, desde: fechaDesde ? desde : "", hasta: fechaHasta ? hasta : "" }}
-        />
-      )}
+      {total > 0 && <FiltrosPostulaciones vacantes={vacantes} inicial={filtros} />}
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-black/5 bg-white shadow-sm">
         {postulaciones.length === 0 ? (
@@ -109,12 +81,13 @@ export default async function AdminDashboard({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-black/5 bg-brand-light/40 text-xs uppercase tracking-wide text-foreground/60">
               <tr>
-                <th className="px-4 py-3 font-semibold">Nombre</th>
-                <th className="px-4 py-3 font-semibold">Posición</th>
-                <th className="px-4 py-3 font-semibold">Fecha</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 text-right font-semibold">Acciones</th>
-                <th className="px-4 py-3 font-semibold">Resumen sugerido con IA</th>
+                <th className="px-3 py-3 font-semibold">Nombre</th>
+                <th className="px-3 py-3 font-semibold">Posición</th>
+                <th className="px-3 py-3 font-semibold">Fecha</th>
+                <th className="px-3 py-3 font-semibold">Estado</th>
+                <th className="px-3 py-3 font-semibold">Interés</th>
+                <th className="px-3 py-3 text-right font-semibold">Acciones</th>
+                <th className="px-3 py-3 font-semibold">Resumen sugerido con IA</th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +95,7 @@ export default async function AdminDashboard({
                 <FilaPostulacion
                   key={p.id}
                   iaConfigurada={ia}
+                  consulta={consulta}
                   p={{
                     id: p.id,
                     nombre: p.nombre,
@@ -129,6 +103,7 @@ export default async function AdminDashboard({
                     posicion: p.vacanteTitulo,
                     fecha: formatearFechaHoraGt(p.createdAt),
                     estado: p.estado,
+                    interes: p.interes,
                     resumenIA: p.resumenIA,
                   }}
                 />

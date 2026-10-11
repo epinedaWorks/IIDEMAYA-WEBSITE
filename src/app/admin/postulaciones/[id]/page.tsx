@@ -13,6 +13,8 @@ import {
 import { agregarComentario, eliminarPostulacion } from "./actions";
 import EliminarPostulacionBoton from "@/components/admin/EliminarPostulacionBoton";
 import EstadoSelect from "@/components/admin/EstadoSelect";
+import InteresSelect from "@/components/admin/InteresSelect";
+import { consultaDeFiltros, leerFiltros, whereDeFiltros } from "@/lib/postulacion-filtros";
 import GenerarResumenBoton from "@/components/admin/GenerarResumenBoton";
 import { iaConfigurada } from "@/lib/resumen-ia";
 
@@ -23,11 +25,14 @@ const SI_NO_LABEL: Record<string, string> = { true: "Sí", false: "No" };
 
 export default async function DetallePostulacion({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await requireAdminSession();
   const { id } = await params;
+  const filtros = leerFiltros(await searchParams);
 
   const postulacion = await prisma.postulacion.findUnique({
     where: { id },
@@ -45,14 +50,81 @@ export default async function DetallePostulacion({
     OPCIONES_MODALIDAD.find((o) => o.value === postulacion.modalidadTrabajo)?.label ??
     postulacion.modalidadTrabajo;
 
+  // Anterior / siguiente según el orden de la lista (más recientes primero)
+  // y los filtros con los que se llegó. Si esta postulación quedó fuera de
+  // esos filtros (por ejemplo, se le cambió el interés), se usa la lista
+  // completa para no dejar al equipo sin navegación.
+  const idsDe = async (donde: ReturnType<typeof whereDeFiltros>) =>
+    (
+      await prisma.postulacion.findMany({
+        where: donde,
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      })
+    ).map((p) => p.id);
+
+  let consulta = consultaDeFiltros(filtros);
+  let ids = await idsDe(whereDeFiltros(filtros));
+  if (!ids.includes(postulacion.id)) {
+    consulta = "";
+    ids = await idsDe({});
+  }
+  const posicionEnLista = ids.indexOf(postulacion.id);
+  const idAnterior = posicionEnLista > 0 ? ids[posicionEnLista - 1] : null;
+  const idSiguiente =
+    posicionEnLista >= 0 && posicionEnLista < ids.length - 1 ? ids[posicionEnLista + 1] : null;
+
+  const sufijo = consulta ? `?${consulta}` : "";
+  const rutaLista = `/admin${sufijo}`;
+  const rutaDe = (otroId: string) => `/admin/postulaciones/${otroId}${sufijo}`;
+
   const agregarComentarioConId = agregarComentario.bind(null, postulacion.id);
-  const eliminarPostulacionConId = eliminarPostulacion.bind(null, postulacion.id);
+  // Al eliminar, se sigue con la siguiente postulación (o la anterior, o la
+  // lista si era la única) en vez de perder el hilo.
+  const eliminarPostulacionConId = eliminarPostulacion.bind(
+    null,
+    postulacion.id,
+    idSiguiente ? rutaDe(idSiguiente) : idAnterior ? rutaDe(idAnterior) : rutaLista
+  );
+
+  const botonNavegacion =
+    "rounded-full border border-brand px-4 py-1.5 text-sm font-medium text-brand transition hover:bg-brand-light active:scale-95";
+  const botonNavegacionInactivo =
+    "rounded-full border border-black/10 px-4 py-1.5 text-sm font-medium text-foreground/30";
 
   return (
     <div>
-      <Link href="/admin" className="text-sm text-brand hover:underline">
-        ← Volver a postulaciones
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={rutaLista} className="text-sm text-brand hover:underline">
+          ← Volver a postulaciones
+        </Link>
+
+        <nav aria-label="Navegar entre postulantes" className="flex items-center gap-2">
+          {idAnterior ? (
+            <Link href={rutaDe(idAnterior)} className={botonNavegacion}>
+              ← Anterior
+            </Link>
+          ) : (
+            <span className={botonNavegacionInactivo} aria-disabled="true">
+              ← Anterior
+            </span>
+          )}
+          {posicionEnLista >= 0 && (
+            <span className="px-1 text-xs font-medium text-foreground/60">
+              {posicionEnLista + 1} de {ids.length}
+            </span>
+          )}
+          {idSiguiente ? (
+            <Link href={rutaDe(idSiguiente)} className={botonNavegacion}>
+              Siguiente →
+            </Link>
+          ) : (
+            <span className={botonNavegacionInactivo} aria-disabled="true">
+              Siguiente →
+            </span>
+          )}
+        </nav>
+      </div>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -69,9 +141,18 @@ export default async function DetallePostulacion({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <EstadoSelect id={postulacion.id} estado={postulacion.estado} />
-          <EliminarPostulacionBoton nombre={postulacion.nombre} action={eliminarPostulacionConId} />
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-foreground/60">Estado</span>
+            <EstadoSelect id={postulacion.id} estado={postulacion.estado} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-foreground/60">Interés de la empresa</span>
+            <InteresSelect id={postulacion.id} interes={postulacion.interes} />
+          </div>
+          <div className="pt-5">
+            <EliminarPostulacionBoton nombre={postulacion.nombre} action={eliminarPostulacionConId} />
+          </div>
         </div>
       </div>
 

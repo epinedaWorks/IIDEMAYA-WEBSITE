@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { eliminarArchivoPostulacion } from "@/lib/uploads";
 import { esEstado } from "@/lib/postulacion-estados";
+import { esInteres } from "@/lib/postulacion-interes";
 import { generarYGuardarResumen, iaConfigurada } from "@/lib/resumen-ia";
 
 export async function agregarComentario(postulacionId: string, formData: FormData) {
@@ -46,6 +47,28 @@ export async function cambiarEstado(
   return { ok: true };
 }
 
+// Valoración de la empresa (sin valorar / posible buen candidato / con
+// interés / descartado). Se guarda en cuanto se elige, igual que el estado.
+export async function cambiarInteres(
+  postulacionId: string,
+  interes: string
+): Promise<{ ok: boolean }> {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+  if (!esInteres(interes)) return { ok: false };
+
+  try {
+    await prisma.postulacion.update({ where: { id: postulacionId }, data: { interes } });
+  } catch (err) {
+    console.error("[postulacion] no se pudo cambiar el interés:", err);
+    return { ok: false };
+  }
+
+  revalidatePath(`/admin/postulaciones/${postulacionId}`);
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 // Genera (o vuelve a generar) el resumen con IA de una postulación.
 export async function generarResumenIA(
   postulacionId: string
@@ -68,9 +91,10 @@ export async function generarResumenIA(
   return { ok: true };
 }
 
-// redirigir=false: desde la lista se queda en la misma página (y conserva
-// los filtros); desde el detalle vuelve a la lista.
-export async function eliminarPostulacion(postulacionId: string, redirigir = true) {
+// destino=false: desde la lista se queda en la misma página (y conserva los
+// filtros). Desde el detalle se manda a dónde seguir (la lista con sus
+// filtros, o la siguiente postulación); solo se aceptan rutas del panel.
+export async function eliminarPostulacion(postulacionId: string, destino: string | false = "/admin") {
   const session = await auth();
   if (!session?.user) throw new Error("No autenticado");
 
@@ -97,5 +121,8 @@ export async function eliminarPostulacion(postulacionId: string, redirigir = tru
   ]);
 
   revalidatePath("/admin");
-  if (redirigir) redirect("/admin");
+  if (destino !== false) {
+    const seguro = /^\/admin(?:[/?]|$)/.test(destino) && !destino.startsWith("//");
+    redirect(seguro ? destino : "/admin");
+  }
 }
