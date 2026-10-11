@@ -10,20 +10,15 @@ import {
   PREGUNTAS_SI_NO,
   OPCIONES_MODALIDAD,
 } from "@/lib/postulacion-preguntas";
-import { agregarComentario, cambiarEstado, eliminarPostulacion } from "./actions";
+import { agregarComentario, eliminarPostulacion } from "./actions";
 import EliminarPostulacionBoton from "@/components/admin/EliminarPostulacionBoton";
+import EstadoSelect from "@/components/admin/EstadoSelect";
+import GenerarResumenBoton from "@/components/admin/GenerarResumenBoton";
+import { iaConfigurada } from "@/lib/resumen-ia";
 
 export const metadata: Metadata = { title: "Postulación | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
 
-const ESTADOS = ["NUEVA", "EN_REVISION", "ENTREVISTA", "RECHAZADA", "CONTRATADA"] as const;
-const ESTADO_LABEL: Record<string, string> = {
-  NUEVA: "Nueva",
-  EN_REVISION: "En revisión",
-  ENTREVISTA: "Entrevista",
-  RECHAZADA: "Rechazada",
-  CONTRATADA: "Contratada",
-};
 const SI_NO_LABEL: Record<string, string> = { true: "Sí", false: "No" };
 
 export default async function DetallePostulacion({
@@ -51,7 +46,6 @@ export default async function DetallePostulacion({
     postulacion.modalidadTrabajo;
 
   const agregarComentarioConId = agregarComentario.bind(null, postulacion.id);
-  const cambiarEstadoConId = cambiarEstado.bind(null, postulacion.id);
   const eliminarPostulacionConId = eliminarPostulacion.bind(null, postulacion.id);
 
   return (
@@ -76,28 +70,43 @@ export default async function DetallePostulacion({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <form action={cambiarEstadoConId} className="flex items-center gap-2">
-            <select
-              name="estado"
-              defaultValue={postulacion.estado}
-              className="rounded-lg border border-black/10 px-3 py-2 text-sm"
-            >
-              {ESTADOS.map((e) => (
-                <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-            >
-              Actualizar estado
-            </button>
-          </form>
+          <EstadoSelect id={postulacion.id} estado={postulacion.estado} />
           <EliminarPostulacionBoton nombre={postulacion.nombre} action={eliminarPostulacionConId} />
         </div>
       </div>
 
       <section className="mt-8 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-brand-dark">Resumen sugerido con IA</h2>
+          {iaConfigurada() && (
+            <GenerarResumenBoton
+              id={postulacion.id}
+              compacto
+              etiqueta={postulacion.resumenIA ? "Volver a generar" : "Generar resumen"}
+            />
+          )}
+        </div>
+        {postulacion.resumenIA ? (
+          <>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">
+              {postulacion.resumenIA}
+            </p>
+            <p className="mt-3 text-xs text-foreground/50">
+              Generado por IA a partir de las respuestas del cuestionario
+              {postulacion.resumenIAAt ? ` · ${formatearFechaHoraGt(postulacion.resumenIAAt)}` : ""}.
+              Es una sugerencia para leer más rápido; revisa siempre las respuestas completas.
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-foreground/60">
+            {iaConfigurada()
+              ? "Todavía no hay resumen para esta postulación."
+              : "La IA no está configurada en este sitio."}
+          </p>
+        )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-brand-dark">Documentos</h2>
         <div className="mt-3 flex flex-wrap gap-3">
           <a

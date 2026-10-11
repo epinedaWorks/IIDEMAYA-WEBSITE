@@ -9,7 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-brand-light/30">
       {session && (
         <header className="border-b border-black/5 bg-white">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
             <div className="flex items-center gap-6">
               <Link href="/admin" className="font-bold text-brand-dark">
                 Panel IIDEMAYA
@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </header>
       )}
-      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
     </div>
   );
 }

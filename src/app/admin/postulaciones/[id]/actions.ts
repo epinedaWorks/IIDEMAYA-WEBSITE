@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { eliminarArchivoPostulacion } from "@/lib/uploads";
+import { esEstado } from "@/lib/postulacion-estados";
+import { generarYGuardarResumen, iaConfigurada } from "@/lib/resumen-ia";
 
 export async function agregarComentario(postulacionId: string, formData: FormData) {
   const session = await auth();
@@ -23,25 +25,52 @@ export async function agregarComentario(postulacionId: string, formData: FormDat
   revalidatePath(`/admin/postulaciones/${postulacionId}`);
 }
 
-const ESTADOS_VALIDOS = new Set(["NUEVA", "EN_REVISION", "ENTREVISTA", "RECHAZADA", "CONTRATADA"]);
-
-export async function cambiarEstado(postulacionId: string, formData: FormData) {
+// Se llama en cuanto se elige un estado en la lista (sin botón de guardar).
+export async function cambiarEstado(
+  postulacionId: string,
+  estado: string
+): Promise<{ ok: boolean }> {
   const session = await auth();
   if (!session?.user) throw new Error("No autenticado");
+  if (!esEstado(estado)) return { ok: false };
 
-  const estado = String(formData.get("estado") || "");
-  if (!ESTADOS_VALIDOS.has(estado)) return;
-
-  await prisma.postulacion.update({
-    where: { id: postulacionId },
-    data: { estado: estado as never },
-  });
+  try {
+    await prisma.postulacion.update({ where: { id: postulacionId }, data: { estado } });
+  } catch (err) {
+    console.error("[postulacion] no se pudo cambiar el estado:", err);
+    return { ok: false };
+  }
 
   revalidatePath(`/admin/postulaciones/${postulacionId}`);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
-export async function eliminarPostulacion(postulacionId: string) {
+// Genera (o vuelve a generar) el resumen con IA de una postulación.
+export async function generarResumenIA(
+  postulacionId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+
+  if (!iaConfigurada()) {
+    return { ok: false, error: "La IA no está configurada (falta ANTHROPIC_API_KEY)." };
+  }
+
+  const postulacion = await prisma.postulacion.findUnique({ where: { id: postulacionId } });
+  if (!postulacion) return { ok: false, error: "La postulación ya no existe." };
+
+  const resumen = await generarYGuardarResumen(postulacion);
+  if (!resumen) return { ok: false, error: "No se pudo generar el resumen. Intenta de nuevo." };
+
+  revalidatePath(`/admin/postulaciones/${postulacionId}`);
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// redirigir=false: desde la lista se queda en la misma página (y conserva
+// los filtros); desde el detalle vuelve a la lista.
+export async function eliminarPostulacion(postulacionId: string, redirigir = true) {
   const session = await auth();
   if (!session?.user) throw new Error("No autenticado");
 
@@ -68,5 +97,5 @@ export async function eliminarPostulacion(postulacionId: string) {
   ]);
 
   revalidatePath("/admin");
-  redirect("/admin");
+  if (redirigir) redirect("/admin");
 }

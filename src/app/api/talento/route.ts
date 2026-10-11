@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { guardarArchivoPostulacion } from "@/lib/uploads";
 import { sendPostulacionEmails } from "@/lib/email";
 import { listarVacantesActivas } from "@/lib/vacantes";
+import { generarYGuardarResumen } from "@/lib/resumen-ia";
 import { VACANTE_GENERAL } from "@/lib/vacantes-const";
 import {
   PREGUNTAS_TEXTO,
@@ -152,7 +153,9 @@ export async function POST(req: Request) {
     },
   });
 
-  await sendPostulacionEmails(postulacion);
+  // En paralelo para no sumar espera: ninguna de las dos lanza error, y si
+  // el resumen falla se puede generar después desde el panel.
+  await Promise.all([sendPostulacionEmails(postulacion), generarYGuardarResumen(postulacion)]);
 
   return NextResponse.json({ ok: true });
 }

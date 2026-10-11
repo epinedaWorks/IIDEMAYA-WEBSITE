@@ -97,6 +97,11 @@ model Postulacion {
   vacanteId     String?
   vacanteTitulo String?
 
+  // Resumen del cuestionario generado con IA (sugerencia para el equipo, no
+  // una evaluación). Null si la IA no está configurada o aún no se generó.
+  resumenIA   String?
+  resumenIAAt DateTime?
+
   estado      EstadoPostulacion @default(NUEVA)
   comentarios Comentario[]
 
