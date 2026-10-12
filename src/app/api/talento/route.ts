@@ -4,6 +4,8 @@ import { guardarArchivoPostulacion } from "@/lib/uploads";
 import { sendPostulacionEmails } from "@/lib/email";
 import { listarVacantesActivas } from "@/lib/vacantes";
 import { generarYGuardarResumen } from "@/lib/resumen-ia";
+import { huella, ipDe, permitir } from "@/lib/rate-limit";
+import { CAMPO_TRAMPA } from "@/lib/anti-bots";
 import { VACANTE_GENERAL } from "@/lib/vacantes-const";
 import {
   PREGUNTAS_TEXTO,
@@ -29,12 +31,26 @@ function siNo(form: FormData, key: string): boolean | null {
   return null;
 }
 
+// Dos archivos de hasta 8 MB cada uno, más los textos.
+const MAX_BYTES = 18 * 1024 * 1024;
+
 export async function POST(req: Request) {
+  const tamano = Number(req.headers.get("content-length") || 0);
+  if (tamano > MAX_BYTES) {
+    return NextResponse.json({ error: "Los archivos pesan demasiado." }, { status: 413 });
+  }
+
   let form: FormData;
   try {
     form = await req.formData();
   } catch {
     return NextResponse.json({ error: "No se pudo leer el formulario." }, { status: 400 });
+  }
+
+  // Campo trampa: las personas no lo ven; los bots lo llenan. Se responde
+  // "ok" sin guardar ni enviar nada.
+  if (texto(form, CAMPO_TRAMPA, 100)) {
+    return NextResponse.json({ ok: true });
   }
 
   const nombre = texto(form, "nombre", 200);
@@ -48,6 +64,7 @@ export async function POST(req: Request) {
   if (!confirmCorreo || confirmCorreo.toLowerCase() !== correo.toLowerCase()) {
     return NextResponse.json({ error: "El correo y su confirmación no coinciden." }, { status: 400 });
   }
+
 
   // Preguntas de entrevista (todas requeridas salvo "día no disponible").
   const respuestas: Record<string, string> = {};
@@ -101,6 +118,24 @@ export async function POST(req: Request) {
       vacanteId = vacante.id;
       vacanteTitulo = vacante.titulo;
     }
+  }
+
+  // Ya con el formulario completo y válido: cada envío guarda archivos y
+  // manda correos (también a la dirección que escribe quien postula), así
+  // que se limita por IP y por correo. Va después de validar los campos para
+  // que un error de llenado no le gaste intentos a una persona real.
+  const ip = ipDe(req.headers);
+  const permitido =
+    (await permitir(`talento:i:${ip}`, 10, 60 * 60 * 1000)) &&
+    (await permitir(`talento:c:${huella(correo)}`, 5, 24 * 60 * 60 * 1000));
+  if (!permitido) {
+    return NextResponse.json(
+      {
+        error:
+          "Ya recibimos varias postulaciones desde tu conexión o con este correo. Si necesitas corregir algo, escríbenos desde la página de contacto.",
+      },
+      { status: 429 }
+    );
   }
 
   const cvFile = form.get("cv");

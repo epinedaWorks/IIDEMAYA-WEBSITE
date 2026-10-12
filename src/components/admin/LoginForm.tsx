@@ -23,7 +23,11 @@ export default function LoginForm() {
 
     setCargando(false);
     if (res?.error) {
-      setError("Correo o contraseña incorrectos.");
+      setError(
+        res.code === "demasiados_intentos"
+          ? "Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo."
+          : "Correo o contraseña incorrectos."
+      );
       return;
     }
     router.push("/admin");
@@ -38,6 +42,7 @@ export default function LoginForm() {
           id="email"
           name="email"
           type="email"
+          autoComplete="username"
           required
           className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-brand"
         />
@@ -48,6 +53,8 @@ export default function LoginForm() {
           id="password"
           name="password"
           type="password"
+          autoComplete="current-password"
+          maxLength={200}
           required
           className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-brand"
         />

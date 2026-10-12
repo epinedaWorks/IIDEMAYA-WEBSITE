@@ -80,6 +80,14 @@ export async function GET() {
       fila[p.key] = String(post[p.key as keyof typeof post] ?? "");
     }
 
+    // Texto que viene de quien postula: si empieza con = + - @ Excel lo
+    // ejecutaría como fórmula al abrir el archivo. Se antepone una comilla
+    // para que se muestre como texto.
+    for (const k of Object.keys(fila)) {
+      const v = fila[k];
+      if (typeof v === "string" && /^[=+\-@\t\r]/.test(v)) fila[k] = `'${v}`;
+    }
+
     const filaExcel = hoja.addRow(fila);
     if (origen) {
       filaExcel.getCell("cv").value = {

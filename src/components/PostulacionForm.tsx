@@ -8,6 +8,7 @@ import {
   OPCIONES_MODALIDAD,
 } from "@/lib/postulacion-preguntas";
 import { VACANTE_GENERAL } from "@/lib/vacantes-const";
+import { CAMPO_TRAMPA } from "@/lib/anti-bots";
 
 type Estado = "idle" | "enviando" | "ok" | "error";
 
@@ -306,6 +307,12 @@ export default function PostulacionForm({
           </div>
         </div>
       </section>
+
+      {/* Campo trampa para bots: fuera de la pantalla y fuera del tabulador. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label htmlFor={CAMPO_TRAMPA}>Déjalo vacío</label>
+        <input id={CAMPO_TRAMPA} name={CAMPO_TRAMPA} tabIndex={-1} autoComplete="off" />
+      </div>
 
       {estado === "error" && <p className="text-sm text-red-600">{errorMsg}</p>}
 

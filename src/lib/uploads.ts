@@ -1,46 +1,79 @@
 import { getStore } from "@netlify/blobs";
 
-export type ValidacionArchivo = { ok: true } | { ok: false; error: string };
+export type TipoArchivo = "pdf" | "doc" | "docx";
+export type ValidacionArchivo = { ok: true; tipo: TipoArchivo } | { ok: false; error: string };
 
 const TAMANO_MAXIMO_BYTES = 8 * 1024 * 1024; // 8 MB — de sobra para un PDF con diseño/fotos
 
-const TIPOS_PERMITIDOS: Record<string, string[]> = {
-  "application/pdf": ["pdf"],
-  "application/msword": ["doc"],
-  "application/vnd.openxmlformats-officedocument.wordformat.document": ["docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
+export const MIME_POR_TIPO: Record<TipoArchivo, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
-const EXTENSIONES_PERMITIDAS = new Set(["pdf", "doc", "docx"]);
+const EXTENSIONES_PERMITIDAS = new Set<string>(["pdf", "doc", "docx"]);
 
-// El MIME type que manda el navegador no siempre es confiable (algunos
-// mandan "" o "application/octet-stream" para .doc), así que se acepta el
-// archivo si CUALQUIERA de los dos (tipo declarado o extensión del nombre)
-// coincide con lo permitido — no se exige que ambos coincidan entre sí.
-function validarArchivo(file: File): ValidacionArchivo {
+// Nombre de archivo apto para guardar y devolver en una cabecera: sin
+// separadores de ruta, comillas ni caracteres de control.
+export function nombreArchivoSeguro(nombre: string, porDefecto = "archivo"): string {
+  const limpio = nombre
+    .normalize("NFC")
+    .replace(/[\u0000-\u001f\u007f"\\/:*?<>|;]/g, "_")
+    .replace(/^\.+/, "")
+    .trim()
+    .slice(0, 150);
+  return limpio || porDefecto;
+}
+
+// Identifica el archivo por su CONTENIDO (los primeros bytes), no por el
+// nombre ni por el tipo que declara el navegador, que cualquiera puede
+// falsear.
+function detectarTipo(bytes: Uint8Array): TipoArchivo | null {
+  const inicio = (...firma: number[]) => firma.every((b, i) => bytes[i] === b);
+
+  // PDF: "%PDF-" al principio (la especificación tolera algo de basura antes).
+  const cabecera = new TextDecoder("latin1").decode(bytes.subarray(0, 1024));
+  if (cabecera.includes("%PDF-")) return "pdf";
+
+  // Word 97-2003 (.doc): contenedor OLE.
+  if (inicio(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1)) return "doc";
+  // Word moderno (.docx): es un ZIP.
+  if (inicio(0x50, 0x4b, 0x03, 0x04)) return "docx";
+  // Algunos .doc en realidad son RTF.
+  if (inicio(0x7b, 0x5c, 0x72, 0x74, 0x66)) return "doc";
+
+  return null;
+}
+
+const familia = (t: string) => (t === "pdf" ? "pdf" : "word");
+
+async function validarArchivo(
+  file: File
+): Promise<ValidacionArchivo & { datos?: ArrayBuffer }> {
   if (!file || file.size === 0) {
     return { ok: false, error: "El archivo está vacío o no se pudo leer." };
   }
-
   if (file.size > TAMANO_MAXIMO_BYTES) {
     return { ok: false, error: "El archivo pesa demasiado (máximo 8 MB)." };
   }
 
-  const extension = file.name.includes(".")
-    ? file.name.split(".").pop()!.toLowerCase()
-    : "";
-
-  const tipoConocido = Boolean(TIPOS_PERMITIDOS[file.type]);
-  const extensionConocida = EXTENSIONES_PERMITIDAS.has(extension);
-
-  if (!tipoConocido && !extensionConocida) {
-    return {
-      ok: false,
-      error: "Solo se aceptan archivos PDF o Word (.pdf, .doc, .docx).",
-    };
+  const extension = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "";
+  if (!EXTENSIONES_PERMITIDAS.has(extension)) {
+    return { ok: false, error: "Solo se aceptan archivos PDF o Word (.pdf, .doc, .docx)." };
   }
 
-  return { ok: true };
+  const datos = await file.arrayBuffer();
+  const tipo = detectarTipo(new Uint8Array(datos, 0, Math.min(datos.byteLength, 1024)));
+  if (!tipo) {
+    return { ok: false, error: "El archivo no es un PDF o Word válido." };
+  }
+  // Un .pdf debe ser PDF; un .doc o .docx puede ser cualquiera de los dos
+  // formatos de Word (es común guardar uno con la extensión del otro).
+  if (familia(tipo) !== familia(extension)) {
+    return { ok: false, error: "El contenido del archivo no coincide con su extensión." };
+  }
+
+  return { ok: true, tipo, datos };
 }
 
 // Genera una key única y guarda el archivo en el store "postulaciones" de
@@ -50,17 +83,21 @@ export async function guardarArchivoPostulacion(
   file: File,
   prefijo: "cv" | "documento"
 ): Promise<string> {
-  const validacion = validarArchivo(file);
-  if (!validacion.ok) {
-    throw new Error(validacion.error);
+  const validacion = await validarArchivo(file);
+  if (!validacion.ok || !validacion.datos) {
+    throw new Error(validacion.ok ? "No se pudo leer el archivo." : validacion.error);
   }
 
   const store = getStore("postulaciones");
-  const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
-  const key = `${prefijo}/${crypto.randomUUID()}${extension ? `.${extension}` : ""}`;
+  // La extensión sale del contenido detectado, nunca del nombre que mandó el
+  // navegador.
+  const key = `${prefijo}/${crypto.randomUUID()}.${validacion.tipo}`;
 
-  await store.set(key, await file.arrayBuffer(), {
-    metadata: { nombreOriginal: file.name, tipo: file.type },
+  await store.set(key, validacion.datos, {
+    metadata: {
+      nombreOriginal: nombreArchivoSeguro(file.name),
+      tipo: MIME_POR_TIPO[validacion.tipo],
+    },
   });
 
   return key;

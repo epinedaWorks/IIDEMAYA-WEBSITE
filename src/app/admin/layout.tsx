@@ -1,12 +1,20 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import SignOutButton from "@/components/admin/SignOutButton";
+import CierreInactividad from "@/components/admin/CierreInactividad";
+
+// Nada del panel debe aparecer en buscadores ni guardarse en archivos web.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, noarchive: true, nosnippet: true },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   return (
     <div className="min-h-screen bg-brand-light/30">
+      {session && <CierreInactividad />}
       {session && (
         <header className="border-b border-black/5 bg-white">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">

@@ -1,7 +1,7 @@
 import type { Postulacion } from "@prisma/client";
 import { getListaCorreos, SETTING_CONTACT_EMAIL, SETTING_POSTULACION_EMAIL } from "./settings";
 import { formatearFechaHoraGt } from "./fecha";
-import { obtenerArchivoPostulacion } from "./uploads";
+import { nombreArchivoSeguro, obtenerArchivoPostulacion } from "./uploads";
 import { generarPdfPostulacion } from "./postulacion-pdf";
 
 const API_KEY = process.env.RESEND_API_KEY;
@@ -24,7 +24,16 @@ function sinConfig() {
 }
 
 const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+// El asunto lleva datos de quien escribe (su nombre): sin saltos de línea ni
+// caracteres de control, para que no pueda inyectar cabeceras de correo.
+const limpiarAsunto = (s: string) => s.replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 200);
 
 function layout(titulo: string, cuerpo: string) {
   return `<!DOCTYPE html>
@@ -90,7 +99,7 @@ async function enviar(opts: {
         body: JSON.stringify({
           from: FROM,
           to: Array.isArray(opts.to) ? opts.to : [opts.to],
-          subject: opts.subject,
+          subject: limpiarAsunto(opts.subject),
           html: opts.html,
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
           ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
@@ -166,7 +175,10 @@ async function adjuntoDesdeBlobKey(key: string, nombrePorDefecto: string): Promi
   try {
     const archivo = await obtenerArchivoPostulacion(key);
     if (!archivo) return null;
-    const nombreOriginal = (archivo.metadata?.nombreOriginal as string) || nombrePorDefecto;
+    const nombreOriginal = nombreArchivoSeguro(
+      (archivo.metadata?.nombreOriginal as string) || nombrePorDefecto,
+      nombrePorDefecto
+    );
     const content = Buffer.from(archivo.data as ArrayBuffer).toString("base64");
     return { filename: nombreOriginal, content };
   } catch (err) {
@@ -264,7 +276,7 @@ async function enviarConReintento(
         body: JSON.stringify({
           from: FROM,
           to: [correo],
-          subject: opts.asunto,
+          subject: limpiarAsunto(opts.asunto),
           html: cuerpoHtml,
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
         }),

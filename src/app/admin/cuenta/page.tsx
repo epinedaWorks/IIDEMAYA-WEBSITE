@@ -9,6 +9,10 @@ export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, { ok: boolean; texto: string }> = {
   ok: { ok: true, texto: "Contraseña actualizada correctamente." },
+  bloqueado: {
+    ok: false,
+    texto: "Demasiados intentos con una contraseña actual incorrecta. Espera 15 minutos e inténtalo de nuevo.",
+  },
   actual_incorrecta: { ok: false, texto: "La contraseña actual no es correcta." },
   no_coincide: { ok: false, texto: "La nueva contraseña y su confirmación no coinciden." },
   politica: {

@@ -8,9 +8,11 @@ if (!process.env.DATABASE_URL && process.env.NETLIFY_DB_URL) {
   process.env.DATABASE_URL = process.env.NETLIFY_DB_URL;
 }
 
-// Evita crear un cliente nuevo en cada hot-reload en desarrollo.
+// Un solo cliente por proceso: en desarrollo evita uno nuevo en cada
+// hot-reload, y en producción evita que cada bloque de código del servidor
+// abra su propio conjunto de conexiones a la base de datos.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;

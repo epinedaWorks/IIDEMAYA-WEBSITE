@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { CAMPO_TRAMPA } from "@/lib/anti-bots";
 
 type Estado = "idle" | "enviando" | "ok" | "error";
 
@@ -16,6 +17,7 @@ export default function ContactForm() {
       nombre: String(data.get("nombre") || ""),
       correo: String(data.get("correo") || ""),
       mensaje: String(data.get("mensaje") || ""),
+      [CAMPO_TRAMPA]: String(data.get(CAMPO_TRAMPA) || ""),
     };
 
     setEstado("enviando");
@@ -98,6 +100,12 @@ export default function ContactForm() {
           maxLength={5000}
           className="rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-brand"
         />
+      </div>
+
+      {/* Campo trampa para bots: fuera de la pantalla y fuera del tabulador. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label htmlFor={CAMPO_TRAMPA}>Déjalo vacío</label>
+        <input id={CAMPO_TRAMPA} name={CAMPO_TRAMPA} tabIndex={-1} autoComplete="off" />
       </div>
 
       {estado === "error" && (

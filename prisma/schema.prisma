@@ -15,7 +15,21 @@ model AdminUser {
   passwordHash String
   name         String?
   createdAt    DateTime     @default(now())
+  // Las sesiones iniciadas antes de esta fecha dejan de valer (se actualiza
+  // al cambiar la contraseña, para cerrar cualquier sesión ajena abierta).
+  passwordChangedAt DateTime?
   comentarios  Comentario[]
+}
+
+// Un registro por intento (inicio de sesión fallido, envío de formulario…)
+// para limitar la frecuencia por IP/correo. La clave no guarda el correo en
+// claro, solo su huella. Se purga solo (ver lib/rate-limit.ts).
+model LimiteTasa {
+  id        String   @id @default(cuid())
+  clave     String
+  createdAt DateTime @default(now())
+
+  @@index([clave, createdAt])
 }
 
 // Comentario interno de un administrador sobre una postulación (para

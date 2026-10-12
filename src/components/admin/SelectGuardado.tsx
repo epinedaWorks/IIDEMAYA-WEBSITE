@@ -31,7 +31,12 @@ export default function SelectGuardado<T extends string>({
 
   // Si el servidor manda un valor distinto (por ejemplo tras recargar la
   // lista), manda el servidor.
-  useEffect(() => setValor(valorInicial), [valorInicial]);
+  const [valorServidor, setValorServidor] = useState<T>(valorInicial);
+  if (valorServidor !== valorInicial) {
+    setValorServidor(valorInicial);
+    setValor(valorInicial);
+  }
+
   useEffect(
     () => () => {
       if (temporizador.current) clearTimeout(temporizador.current);
