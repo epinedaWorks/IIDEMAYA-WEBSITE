@@ -216,8 +216,34 @@ export default function PostulacionForm({
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="telefono" className={etiqueta}>{n()}. Teléfono (opcional)</label>
-            <input id="telefono" name="telefono" maxLength={50} className={campo} />
+            <label htmlFor="telefono" className={etiqueta}>{n()}. Teléfono</label>
+            <input
+              id="telefono"
+              name="telefono"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              required
+              minLength={7}
+              maxLength={20}
+              pattern="[0-9+()\-\s]{7,20}"
+              title="Solo números, espacios y los signos + - ( ). Ejemplo: 5555-1234"
+              placeholder="Ej. 5555-1234"
+              className={campo}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label htmlFor="direccion" className={etiqueta}>{n()}. Dirección donde vive</label>
+            <input
+              id="direccion"
+              name="direccion"
+              autoComplete="street-address"
+              required
+              minLength={5}
+              maxLength={300}
+              placeholder="Calle o avenida, zona, municipio y departamento"
+              className={campo}
+            />
           </div>
         </div>
       </section>

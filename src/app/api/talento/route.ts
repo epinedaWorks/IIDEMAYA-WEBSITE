@@ -15,6 +15,8 @@ import {
 } from "@/lib/postulacion-preguntas";
 
 const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Solo dígitos, espacios y + - ( ), con al menos 7 caracteres.
+const TELEFONO_RE = /^[0-9+()\-\s]{7,20}$/;
 const MODALIDADES_VALIDAS = new Set(OPCIONES_MODALIDAD.map((o) => o.value));
 
 function texto(form: FormData, key: string, maxLen = 4000): string | null {
@@ -56,13 +58,20 @@ export async function POST(req: Request) {
   const nombre = texto(form, "nombre", 200);
   const correo = texto(form, "correo", 200);
   const confirmCorreo = texto(form, "confirmCorreo", 200);
-  const telefono = texto(form, "telefono", 50); // opcional
+  const telefono = texto(form, "telefono", 20);
+  const direccion = texto(form, "direccion", 300);
 
   if (!nombre || !correo || !CORREO_RE.test(correo)) {
     return NextResponse.json({ error: "Revisa tu nombre y correo." }, { status: 400 });
   }
   if (!confirmCorreo || confirmCorreo.toLowerCase() !== correo.toLowerCase()) {
     return NextResponse.json({ error: "El correo y su confirmación no coinciden." }, { status: 400 });
+  }
+  if (!telefono || !TELEFONO_RE.test(telefono)) {
+    return NextResponse.json({ error: "Revisa tu número de teléfono." }, { status: 400 });
+  }
+  if (!direccion || direccion.length < 5) {
+    return NextResponse.json({ error: "Indica la dirección donde vives." }, { status: 400 });
   }
 
 
@@ -161,6 +170,7 @@ export async function POST(req: Request) {
       nombre,
       correo,
       telefono,
+      direccion,
       opinionSociedad: respuestas.opinionSociedad,
       opinionPoblacionMaya: respuestas.opinionPoblacionMaya,
       comodidadTrabajarConPoblacionMaya: respuestas.comodidadTrabajarConPoblacionMaya,

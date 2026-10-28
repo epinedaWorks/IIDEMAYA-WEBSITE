@@ -85,6 +85,9 @@ model Postulacion {
   nombre   String
   correo   String
   telefono String?
+  // Dónde vive la persona. Opcional en la base de datos porque las
+  // postulaciones anteriores a este campo no la tienen; el formulario sí la pide.
+  direccion String?
 
   // Preguntas de entrevista (reformuladas, mismo fondo que el cuestionario original)
   opinionSociedad                  String

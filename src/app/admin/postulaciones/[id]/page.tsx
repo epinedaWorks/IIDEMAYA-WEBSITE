@@ -133,6 +133,9 @@ export default async function DetallePostulacion({
             {postulacion.correo}
             {postulacion.telefono ? ` · ${postulacion.telefono}` : ""}
           </p>
+          {postulacion.direccion && (
+            <p className="mt-1 text-sm text-foreground/60">Dirección: {postulacion.direccion}</p>
+          )}
           <p className="mt-1 text-sm font-medium text-brand">
             Posición: {postulacion.vacanteTitulo ?? "Postulación general"}
           </p>
