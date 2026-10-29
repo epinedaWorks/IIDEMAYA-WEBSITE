@@ -29,6 +29,9 @@ export default async function AdminDashboard({
         id: true,
         nombre: true,
         correo: true,
+        telefono: true,
+        direccion: true,
+        expectativaSalarial: true,
         createdAt: true,
         estado: true,
         interes: true,
@@ -82,6 +85,10 @@ export default async function AdminDashboard({
             <thead className="border-b border-black/5 bg-brand-light/40 text-xs uppercase tracking-wide text-foreground/60">
               <tr>
                 <th className="px-3 py-3 font-semibold">Nombre</th>
+                <th className="px-3 py-3 font-semibold">Correo</th>
+                <th className="px-3 py-3 font-semibold">Teléfono</th>
+                <th className="px-3 py-3 font-semibold">Dirección</th>
+                <th className="px-3 py-3 font-semibold">Remuneración</th>
                 <th className="px-3 py-3 font-semibold">Posición</th>
                 <th className="px-3 py-3 font-semibold">Fecha</th>
                 <th className="px-3 py-3 font-semibold">Estado</th>
@@ -100,6 +107,9 @@ export default async function AdminDashboard({
                     id: p.id,
                     nombre: p.nombre,
                     correo: p.correo,
+                    telefono: p.telefono,
+                    direccion: p.direccion,
+                    remuneracion: p.expectativaSalarial,
                     posicion: p.vacanteTitulo,
                     fecha: formatearFechaHoraGt(p.createdAt),
                     estado: p.estado,

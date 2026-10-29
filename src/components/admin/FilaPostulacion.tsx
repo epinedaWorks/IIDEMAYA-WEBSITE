@@ -14,6 +14,9 @@ export type PostulacionFila = {
   id: string;
   nombre: string;
   correo: string;
+  telefono: string | null;
+  direccion: string | null;
+  remuneracion: string;
   posicion: string | null;
   fecha: string;
   estado: Estado;
@@ -46,7 +49,28 @@ export default function FilaPostulacion({
         <Link href={destino} className="font-medium text-brand-dark hover:underline" onClick={detenerClic}>
           {p.nombre}
         </Link>
-        <div className="mt-0.5 break-words text-xs text-foreground/60">{p.correo}</div>
+      </td>
+      <td className="min-w-[11rem] break-words px-3 py-3 text-foreground/70">{p.correo}</td>
+      <td className="whitespace-nowrap px-3 py-3 text-foreground/70">
+        {p.telefono || <span className="text-foreground/40">—</span>}
+      </td>
+      <td className="min-w-[12rem] px-3 py-3 text-foreground/70">
+        {p.direccion ? (
+          <p className="line-clamp-3" title={p.direccion}>
+            {p.direccion}
+          </p>
+        ) : (
+          <span className="text-foreground/40">—</span>
+        )}
+      </td>
+      <td className="min-w-[9rem] px-3 py-3 text-foreground/70">
+        {p.remuneracion ? (
+          <p className="line-clamp-3" title={p.remuneracion}>
+            {p.remuneracion}
+          </p>
+        ) : (
+          <span className="text-foreground/40">—</span>
+        )}
       </td>
       <td className="px-3 py-3 text-foreground/70">
         {p.posicion ?? <span className="text-foreground/40">General</span>}

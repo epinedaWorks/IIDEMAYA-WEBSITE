@@ -208,8 +208,16 @@ export default async function DetallePostulacion({
             </a>
           )}
           <a
-            href={`/api/admin/postulaciones/${postulacion.id}/pdf`}
+            href={`/api/admin/postulaciones/${postulacion.id}/pdf?ver=1`}
+            target="_blank"
+            rel="noopener"
             className="rounded-full bg-accent-light px-4 py-2 text-sm font-medium text-accent hover:brightness-95"
+          >
+            Ver cuestionario en PDF
+          </a>
+          <a
+            href={`/api/admin/postulaciones/${postulacion.id}/pdf`}
+            className="rounded-full border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-accent-light"
           >
             Descargar cuestionario en PDF
           </a>

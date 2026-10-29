@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generarPdfPostulacion } from "@/lib/postulacion-pdf";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+// Sin parámetros se descarga; con `?ver=1` el navegador lo muestra en pantalla.
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -18,10 +19,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const buffer = await generarPdfPostulacion(postulacion);
   const nombreArchivo = postulacion.nombre.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
+  const disposicion = new URL(req.url).searchParams.get("ver") === "1" ? "inline" : "attachment";
+
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="postulacion-${nombreArchivo}.pdf"`,
+      "Content-Disposition": `${disposicion}; filename="postulacion-${nombreArchivo}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });
