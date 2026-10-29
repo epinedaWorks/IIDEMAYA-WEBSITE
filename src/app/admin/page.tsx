@@ -6,6 +6,7 @@ import { iaConfigurada } from "@/lib/resumen-ia";
 import { consultaDeFiltros, hayFiltros, leerFiltros, whereDeFiltros } from "@/lib/postulacion-filtros";
 import FilaPostulacion from "@/components/admin/FilaPostulacion";
 import FiltrosPostulaciones from "@/components/admin/FiltrosPostulaciones";
+import TablaDesplazable from "@/components/admin/TablaDesplazable";
 
 export const metadata: Metadata = { title: "Postulaciones | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
@@ -73,7 +74,7 @@ export default async function AdminDashboard({
 
       {total > 0 && <FiltrosPostulaciones vacantes={vacantes} inicial={filtros} />}
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-black/5 bg-white shadow-sm">
+      <TablaDesplazable>
         {postulaciones.length === 0 ? (
           <p className="p-8 text-center text-sm text-foreground/60">
             {total === 0
@@ -82,8 +83,8 @@ export default async function AdminDashboard({
           </p>
         ) : (
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-black/5 bg-brand-light/40 text-xs uppercase tracking-wide text-foreground/60">
-              <tr>
+            <thead className="sticky top-0 z-10 border-b border-black/5 bg-white text-xs uppercase tracking-wide text-foreground/60 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+              <tr className="bg-brand-light/40">
                 <th className="px-3 py-3 font-semibold">Nombre</th>
                 <th className="px-3 py-3 font-semibold">Correo</th>
                 <th className="px-3 py-3 font-semibold">Teléfono</th>
@@ -121,7 +122,7 @@ export default async function AdminDashboard({
             </tbody>
           </table>
         )}
-      </div>
+      </TablaDesplazable>
 
       <p className="mt-3 text-xs text-foreground/50">
         El resumen lo genera una IA a partir de las respuestas del cuestionario y es solo una
