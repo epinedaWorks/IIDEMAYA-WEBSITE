@@ -144,8 +144,21 @@ model Postulacion {
   @@index([vacanteId])
 }
 
-// Un horario de entrevista que el equipo habilita. Sin postulación = libre.
-// Si se borra la postulación, el horario vuelve a quedar libre.
+// Persona a la que el equipo invita a una entrevista sin que haya postulado
+// por el sitio (se agrega a mano desde /admin/entrevistas). Funciona igual que
+// una postulación para agendar: tiene su propio enlace con token.
+model InvitadoEntrevista {
+  id          String             @id @default(cuid())
+  createdAt   DateTime           @default(now())
+  nombre      String
+  correo      String             @unique
+  token       String             @unique
+  invitadaAt  DateTime?
+  entrevistas FranjaEntrevista[]
+}
+
+// Un horario de entrevista que el equipo habilita. Sin postulación ni invitado
+// = libre. Si se borra a quien lo tenía, el horario vuelve a quedar libre.
 model FranjaEntrevista {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -155,12 +168,16 @@ model FranjaEntrevista {
   // Enlace de videollamada o lugar; se le muestra a quien reserva.
   detalle String?
 
-  postulacion   Postulacion? @relation(fields: [postulacionId], references: [id], onDelete: SetNull)
+  // Lo reserva una postulación O una persona invitada a mano (nunca las dos).
+  postulacion   Postulacion?        @relation(fields: [postulacionId], references: [id], onDelete: SetNull)
   postulacionId String?
+  invitado      InvitadoEntrevista? @relation(fields: [invitadoId], references: [id], onDelete: SetNull)
+  invitadoId    String?
   reservadaAt   DateTime?
 
   @@index([inicio])
   @@index([postulacionId])
+  @@index([invitadoId])
 }
 
 // Plaza abierta que se muestra en /vacantes y en la lista de /talento. El

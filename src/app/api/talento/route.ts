@@ -209,7 +209,7 @@ export async function POST(req: Request) {
   let agendaUrl: string | undefined;
   try {
     const hayHorarios = await prisma.franjaEntrevista.count({
-      where: { postulacionId: null, inicio: { gt: new Date(Date.now() + ANTICIPACION_MIN * 60_000) } },
+      where: { postulacionId: null, invitadoId: null, inicio: { gt: new Date(Date.now() + ANTICIPACION_MIN * 60_000) } },
     });
     if (hayHorarios > 0) agendaUrl = `/entrevista/${await asegurarToken(postulacion.id)}`;
   } catch (err) {

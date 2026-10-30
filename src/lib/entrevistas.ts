@@ -126,6 +126,55 @@ export function origenSitio(): string {
 
 export const urlAgenda = (token: string) => `${origenSitio()}/entrevista/${token}`;
 
+export const nuevoToken = () => randomBytes(18).toString("base64url");
+
+// Quien agenda: una postulación o alguien invitado a mano. Es lo que
+// reservarFranja necesita para saber a quién ligar el horario.
+export type Quien = { postulacionId: string } | { invitadoId: string };
+
+export type PersonaAgenda = {
+  quien: Quien;
+  nombre: string;
+  correo: string;
+  vacanteTitulo: string | null;
+  esInvitado: boolean;
+  // Una postulación rechazada o contratada ya no puede agendar.
+  activa: boolean;
+  // Donde el equipo ve a esta persona en el panel.
+  rutaAdmin: string;
+};
+
+// Busca quién es el dueño de un enlace de agenda, sea postulante o invitado.
+export async function personaPorToken(token: string): Promise<PersonaAgenda | null> {
+  if (token.length < 10 || token.length > 64) return null;
+
+  const p = await prisma.postulacion.findUnique({ where: { entrevistaToken: token } });
+  if (p) {
+    return {
+      quien: { postulacionId: p.id },
+      nombre: p.nombre,
+      correo: p.correo,
+      vacanteTitulo: p.vacanteTitulo,
+      esInvitado: false,
+      activa: p.estado !== "RECHAZADA" && p.estado !== "CONTRATADA",
+      rutaAdmin: `/postulaciones/${p.id}`,
+    };
+  }
+  const i = await prisma.invitadoEntrevista.findUnique({ where: { token } });
+  if (i) {
+    return {
+      quien: { invitadoId: i.id },
+      nombre: i.nombre,
+      correo: i.correo,
+      vacanteTitulo: null,
+      esInvitado: true,
+      activa: true,
+      rutaAdmin: "/entrevistas",
+    };
+  }
+  return null;
+}
+
 // Cada postulación tiene un token propio e imposible de adivinar; se crea la
 // primera vez que hace falta y después siempre es el mismo (el enlace de un
 // correo anterior sigue sirviendo).
@@ -137,7 +186,7 @@ export async function asegurarToken(postulacionId: string): Promise<string> {
   if (!actual) throw new Error("Postulación no encontrada");
   if (actual.entrevistaToken) return actual.entrevistaToken;
 
-  const nuevo = randomBytes(18).toString("base64url");
+  const nuevo = nuevoToken();
   // Solo escribe si nadie se adelantó entre la lectura y este momento.
   await prisma.postulacion.updateMany({
     where: { id: postulacionId, entrevistaToken: null },
@@ -161,13 +210,13 @@ export type ResultadoReserva =
 // Reserva `franjaId` para la persona. Si ya tenía otra entrevista futura, la
 // cambia (la anterior queda libre), todo en una sola transacción: o queda con
 // el horario nuevo o conserva el que tenía.
-export async function reservarFranja(postulacionId: string, franjaId: string): Promise<ResultadoReserva> {
+export async function reservarFranja(quien: Quien, franjaId: string): Promise<ResultadoReserva> {
   const ahora = new Date();
   const limite = new Date(ahora.getTime() + ANTICIPACION_MIN * 60_000);
   try {
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.franjaEntrevista.findFirst({
-        where: { postulacionId, inicio: { gt: ahora } },
+        where: { ...quien, inicio: { gt: ahora } },
       });
       if (anterior && anterior.inicio <= limite) {
         throw new HorarioNoDisponible(
@@ -177,14 +226,14 @@ export async function reservarFranja(postulacionId: string, franjaId: string): P
       if (anterior) {
         await tx.franjaEntrevista.update({
           where: { id: anterior.id },
-          data: { postulacionId: null, reservadaAt: null },
+          data: { postulacionId: null, invitadoId: null, reservadaAt: null },
         });
       }
       // Solo se queda con el horario si sigue libre y en el futuro: si otra
       // persona se lo ganó hace un instante, no afecta ninguna fila.
       const tomada = await tx.franjaEntrevista.updateMany({
-        where: { id: franjaId, postulacionId: null, inicio: { gt: limite } },
-        data: { postulacionId, reservadaAt: ahora },
+        where: { id: franjaId, postulacionId: null, invitadoId: null, inicio: { gt: limite } },
+        data: { ...quien, reservadaAt: ahora },
       });
       if (tomada.count !== 1) {
         throw new HorarioNoDisponible("Ese horario ya no está disponible. Elige otro, por favor.");

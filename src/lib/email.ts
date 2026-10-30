@@ -343,7 +343,11 @@ export async function enviarAnuncioMasivo(opts: {
 
 // ---------- Entrevistas ----------
 
-const primerNombre = (nombre: string) => nombre.trim().split(/\s+/)[0] || nombre;
+// "Hola, Ana"; si no se conoce el nombre (invitación solo con correo), "Hola".
+const saludo = (nombre: string) => {
+  const primero = nombre.trim().split(/\s+/)[0];
+  return primero ? `Hola, ${primero}` : "Hola";
+};
 
 function boton(url: string, texto: string) {
   return `<p style="margin:20px 0"><a href="${esc(url)}" style="background:#0a3a24;color:#fbfaf7;padding:12px 22px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block">${esc(texto)}</a></p>
@@ -361,17 +365,22 @@ function detalleHtml(detalle: string) {
 // Invitación para que la persona elija día y hora. Una sola vez por correo y
 // con el enlace propio de cada postulación.
 export async function sendInvitacionEntrevista(
-  p: Pick<Postulacion, "nombre" | "correo" | "vacanteTitulo">,
+  p: Pick<Postulacion, "nombre" | "correo" | "vacanteTitulo"> & { invitado?: boolean },
   token: string
 ): Promise<ResultadoEnvio> {
   const correosEquipo = await getCorreosPostulacion();
   const posicion = p.vacanteTitulo ? ` para la posición de ${esc(p.vacanteTitulo)}` : "";
+  // Quien postuló recibe un agradecimiento; a quien se invitó a mano no se le
+  // agradece una postulación que no hizo.
+  const intro = p.invitado
+    ? "Nos gustaría conocerte y te invitamos a una entrevista con IIDEMAYA: elige el día y la hora que mejor te acomoden."
+    : `Gracias por postularte${posicion}. Nos gustaría conocerte: elige el día y la hora que mejor te acomoden para tu entrevista.`;
   return enviar({
     to: p.correo,
     subject: "Agenda tu entrevista · IIDEMAYA",
     html: layout(
-      `Hola, ${esc(primerNombre(p.nombre))}`,
-      `<p style="font-size:14px;line-height:1.6">Gracias por postularte${posicion}. Nos gustaría conocerte: elige el día y la hora que mejor te acomoden para tu entrevista.</p>
+      esc(saludo(p.nombre)),
+      `<p style="font-size:14px;line-height:1.6">${intro}</p>
       ${boton(urlAgenda(token), "Agendar mi entrevista")}
       <p style="font-size:13px;color:#666;line-height:1.6;margin-top:16px">Si ninguno de los horarios te sirve, responde a este correo y buscamos otro.</p>`
     ),
@@ -383,7 +392,14 @@ export async function sendInvitacionEntrevista(
 // Resend). Devuelve quién recibió la invitación y quién no, para marcar solo
 // a quienes sí salió.
 export async function sendInvitacionesEntrevista(
-  lista: { id: string; nombre: string; correo: string; vacanteTitulo: string | null; token: string }[]
+  lista: {
+    id: string;
+    nombre: string;
+    correo: string;
+    vacanteTitulo: string | null;
+    token: string;
+    invitado?: boolean;
+  }[]
 ): Promise<{ enviados: string[]; fallidos: { id: string; correo: string; motivo: string }[] }> {
   const enviados: string[] = [];
   const fallidos: { id: string; correo: string; motivo: string }[] = [];
@@ -403,7 +419,7 @@ export async function sendInvitacionesEntrevista(
 // Confirmación a quien reservó (con el evento para su calendario) y aviso al
 // equipo. `cambio` indica que movió una entrevista que ya tenía.
 export async function sendEntrevistaAgendada(
-  p: Postulacion,
+  p: { nombre: string; correo: string; vacanteTitulo: string | null; rutaAdmin: string },
   franja: FranjaEntrevista,
   token: string,
   cambio: boolean
@@ -416,7 +432,7 @@ export async function sendEntrevistaAgendada(
     subject: cambio ? "Cambiamos tu entrevista · IIDEMAYA" : "Tu entrevista está agendada · IIDEMAYA",
     html: layout(
       cambio ? "Tu entrevista cambió de horario" : "¡Tu entrevista está agendada!",
-      `<p style="font-size:14px;line-height:1.6">Hola, ${esc(primerNombre(p.nombre))}. Te esperamos:</p>
+      `<p style="font-size:14px;line-height:1.6">${esc(saludo(p.nombre))}. Te esperamos:</p>
       ${filas([
         ["Fecha", cuando],
         ["Hora", `${rangoHorasGt(franja.inicio, franja.fin)} (hora de Guatemala)`],
@@ -438,17 +454,17 @@ export async function sendEntrevistaAgendada(
   if (correosEquipo.length) {
     await enviar({
       to: correosEquipo,
-      subject: `${cambio ? "Entrevista reprogramada" : "Entrevista agendada"}: ${p.nombre}`,
+      subject: `${cambio ? "Entrevista reprogramada" : "Entrevista agendada"}: ${p.nombre || p.correo}`,
       html: layout(
         cambio ? "Una persona cambió su entrevista" : "Una persona agendó su entrevista",
         `${filas([
-          ["Nombre", p.nombre],
+          ["Nombre", p.nombre || p.correo],
           ["Correo", p.correo],
           ["Posición", p.vacanteTitulo ?? "Postulación general"],
           ["Fecha", cuando],
           ["Hora", rangoHorasGt(franja.inicio, franja.fin)],
         ])}
-        <p style="margin-top:16px"><a href="${ADMIN_URL}/postulaciones/${p.id}" style="color:#0f5132">Ver postulación →</a></p>`
+        <p style="margin-top:16px"><a href="${ADMIN_URL}${p.rutaAdmin}" style="color:#0f5132">Ver en el panel →</a></p>`
       ),
       replyTo: p.correo,
     });
@@ -467,7 +483,7 @@ export async function sendEntrevistaLiberada(
     to: p.correo,
     subject: "Necesitamos reagendar tu entrevista · IIDEMAYA",
     html: layout(
-      `Hola, ${esc(primerNombre(p.nombre))}`,
+      esc(saludo(p.nombre)),
       `<p style="font-size:14px;line-height:1.6">Tuvimos que liberar el horario de tu entrevista del ${esc(fechaHoraLargaGt(franja.inicio))}. Disculpa el inconveniente: elige otro horario que te acomode.</p>
       ${boton(urlAgenda(token), "Elegir otro horario")}`
     ),

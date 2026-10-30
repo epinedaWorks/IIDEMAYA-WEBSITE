@@ -10,14 +10,21 @@ import {
   hoyGt,
   rangoHorasGt,
 } from "@/lib/entrevistas";
-import { crearFranjas, eliminarFranja, invitarVarias, liberarFranja } from "./actions";
+import {
+  crearFranjas,
+  eliminarFranja,
+  eliminarInvitado,
+  invitarManual,
+  invitarVarias,
+  liberarFranja,
+} from "./actions";
 import ConfirmarAccionBoton from "@/components/admin/ConfirmarAccionBoton";
 import InvitarSeleccion, { type PersonaInvitable } from "@/components/admin/InvitarSeleccion";
 
 export const metadata: Metadata = { title: "Entrevistas | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
 
-type Params = { msg?: string; n?: string; o?: string; f?: string; error?: string };
+type Params = { msg?: string; n?: string; o?: string; f?: string; x?: string; p?: string; error?: string };
 
 function aviso(p: Params): { ok: boolean; texto: string } | null {
   if (p.error) return { ok: false, texto: p.error.slice(0, 200) };
@@ -42,6 +49,21 @@ function aviso(p: Params): { ok: boolean; texto: string } | null {
           (f > 0 ? ` No se pudo enviar a ${f}; intenta de nuevo con ellas.` : ""),
       };
     }
+    case "manual": {
+      const f = Number(p.f ?? 0);
+      const x = Number(p.x ?? 0);
+      const ya = Number(p.p ?? 0);
+      return {
+        ok: f === 0 && x === 0,
+        texto:
+          `Invitación enviada a ${n} ${plural(n, "persona", "personas")}.` +
+          (ya > 0
+            ? ` ${ya} ${plural(ya, "ya había postulado: se le mandó su enlace de postulante", "ya habían postulado: se les mandó su enlace de postulante")}.`
+            : "") +
+          (f > 0 ? ` No se pudo enviar a ${f}; usa «Seleccionar» en la lista de abajo para reintentar.` : "") +
+          (x > 0 ? ` ${x} ${plural(x, "línea se omitió", "líneas se omitieron")} por no tener un correo válido.` : ""),
+      };
+    }
     case "liberada":
       return { ok: true, texto: "Horario liberado. Se le avisó a la persona para que elija otro." };
     case "liberada_sin_correo":
@@ -64,33 +86,47 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
   const mensaje = aviso(params);
   const ahora = new Date();
 
-  const [proximas, pasadas, postulaciones] = await Promise.all([
+  const quien = {
+    postulacion: { select: { id: true, nombre: true } },
+    invitado: { select: { id: true, nombre: true, correo: true } },
+  } as const;
+
+  const [proximas, pasadas, postulaciones, invitados] = await Promise.all([
     prisma.franjaEntrevista.findMany({
       where: { fin: { gt: ahora } },
       orderBy: { inicio: "asc" },
-      include: { postulacion: { select: { id: true, nombre: true } } },
+      include: quien,
     }),
     prisma.franjaEntrevista.findMany({
-      where: { fin: { lte: ahora }, postulacionId: { not: null } },
+      where: {
+        fin: { lte: ahora },
+        OR: [{ postulacionId: { not: null } }, { invitadoId: { not: null } }],
+      },
       orderBy: { inicio: "desc" },
       take: 30,
-      include: { postulacion: { select: { id: true, nombre: true } } },
+      include: quien,
     }),
+    // Las rechazadas y contratadas no se listan: su enlace ya no serviría.
     prisma.postulacion.findMany({
-      where: { estado: { notIn: ["RECHAZADA", "CONTRATADA"] }, interes: { not: "DESCARTADO" } },
+      where: { estado: { notIn: ["RECHAZADA", "CONTRATADA"] } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         nombre: true,
         correo: true,
         vacanteTitulo: true,
+        interes: true,
         entrevistaInvitadaAt: true,
         entrevistas: { where: { inicio: { gt: ahora } }, select: { inicio: true }, take: 1 },
       },
     }),
+    prisma.invitadoEntrevista.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { entrevistas: { where: { inicio: { gt: ahora } }, select: { inicio: true }, take: 1 } },
+    }),
   ]);
 
-  const libres = proximas.filter((f) => !f.postulacion).length;
+  const libres = proximas.filter((f) => !f.postulacion && !f.invitado).length;
   const reservadas = proximas.length - libres;
 
   const dias: { clave: string; titulo: string; franjas: typeof proximas }[] = [];
@@ -104,22 +140,41 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
     dia.franjas.push(f);
   }
 
-  const personas: PersonaInvitable[] = postulaciones.map((p) => {
-    const agendada = p.entrevistas[0]?.inicio;
-    return {
+  const situacionDe = (agendada: Date | undefined, invitadaAt: Date | null) =>
+    agendada
+      ? `Agendó: ${fechaHoraLargaGt(agendada)}`
+      : invitadaAt
+        ? `Invitada el ${invitadaAt.toLocaleDateString("es-GT", { timeZone: "America/Guatemala", day: "numeric", month: "short" })}`
+        : null;
+
+  // Primero los invitados a mano (suelen ser los más recientes), luego los
+  // postulantes de más nuevo a más viejo.
+  const personas: PersonaInvitable[] = [
+    ...invitados.map((i) => ({
+      clave: `i:${i.id}`,
+      id: i.id,
+      invitadoManual: true,
+      nombre: i.nombre || i.correo,
+      correo: i.correo,
+      posicion: null,
+      interes: null,
+      yaAgendo: Boolean(i.entrevistas[0]),
+      yaInvitada: Boolean(i.invitadaAt),
+      situacion: situacionDe(i.entrevistas[0]?.inicio, i.invitadaAt),
+    })),
+    ...postulaciones.map((p) => ({
+      clave: `p:${p.id}`,
       id: p.id,
+      invitadoManual: false,
       nombre: p.nombre,
       correo: p.correo,
       posicion: p.vacanteTitulo,
-      yaAgendo: Boolean(agendada),
+      interes: p.interes,
+      yaAgendo: Boolean(p.entrevistas[0]),
       yaInvitada: Boolean(p.entrevistaInvitadaAt),
-      situacion: agendada
-        ? `Agendó: ${fechaHoraLargaGt(agendada)}`
-        : p.entrevistaInvitadaAt
-          ? `Invitada el ${p.entrevistaInvitadaAt.toLocaleDateString("es-GT", { timeZone: "America/Guatemala", day: "numeric", month: "short" })}`
-          : null,
-    };
-  });
+      situacion: situacionDe(p.entrevistas[0]?.inicio, p.entrevistaInvitadaAt),
+    })),
+  ];
 
   return (
     <div>
@@ -221,7 +276,7 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
                   {d.franjas.map((f) => (
                     <li key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
                       <span className="w-52 whitespace-nowrap font-medium tabular-nums">{rangoHorasGt(f.inicio, f.fin)}</span>
-                      {f.postulacion ? (
+                      {f.postulacion || f.invitado ? (
                         <span className="rounded-full bg-green-100 px-3 py-0.5 text-xs font-semibold text-green-700">
                           Reservada
                         </span>
@@ -235,16 +290,23 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
                           <Link href={`/admin/postulaciones/${f.postulacion.id}`} className="font-medium text-brand-dark hover:underline">
                             {f.postulacion.nombre}
                           </Link>
+                        ) : f.invitado ? (
+                          <span title={f.invitado.correo}>
+                            <span className="font-medium text-brand-dark">{f.invitado.nombre || f.invitado.correo}</span>
+                            <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                              Invitado a mano
+                            </span>
+                          </span>
                         ) : (
                           f.detalle
                         )}
                       </span>
-                      {f.postulacion ? (
+                      {f.postulacion || f.invitado ? (
                         <form action={liberarFranja.bind(null, f.id)}>
                           <ConfirmarAccionBoton
                             etiqueta="Liberar"
                             titulo="¿Liberar este horario?"
-                            mensaje={`Se le quitará el horario a ${f.postulacion.nombre} y se le enviará un correo para que elija otro.`}
+                            mensaje={`Se le quitará el horario a ${f.postulacion?.nombre || f.invitado?.nombre || f.invitado?.correo} y se le enviará un correo para que elija otro.`}
                             etiquetaConfirmar="Sí, liberar"
                             className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 active:scale-95"
                           />
@@ -276,10 +338,16 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
               {pasadas.map((f) => (
                 <li key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-2">
                   <span className="w-64 first-letter:uppercase text-foreground/70">{fechaHoraLargaGt(f.inicio)}</span>
-                  {f.postulacion && (
+                  {f.postulacion ? (
                     <Link href={`/admin/postulaciones/${f.postulacion.id}`} className="font-medium text-brand-dark hover:underline">
                       {f.postulacion.nombre}
                     </Link>
+                  ) : (
+                    f.invitado && (
+                      <span className="font-medium text-brand-dark" title={f.invitado.correo}>
+                        {f.invitado.nombre || f.invitado.correo}
+                      </span>
+                    )
                   )}
                 </li>
               ))}
@@ -289,11 +357,11 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
       </section>
 
       <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-brand-dark">3. Invitar a postulantes</h2>
+        <h2 className="text-lg font-semibold text-brand-dark">3. Invitar a una entrevista</h2>
         <p className="mt-1 text-sm text-foreground/60">
-          Cada persona recibe un correo con su enlace personal para elegir horario. No aparecen las
-          personas rechazadas, contratadas ni descartadas. También puedes invitar a una sola desde el
-          detalle de su postulación.
+          Cada persona recibe un correo con su enlace personal para elegir horario. Puedes invitar a
+          quienes postularon (elige abajo; nadie viene marcado) o a gente que no postuló (primer
+          recuadro). Las postulaciones rechazadas o contratadas no aparecen.
         </p>
         {libres === 0 && (
           <p className="mt-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -301,11 +369,37 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
             tengan dónde elegir.
           </p>
         )}
-        <div className="mt-4">
+
+        <form action={invitarManual} className="mt-4 rounded-xl border border-black/5 bg-brand-light/30 p-4">
+          <h3 className="text-sm font-semibold text-brand-dark">Invitar a alguien que no postuló</h3>
+          <p className="mt-1 text-xs text-foreground/60">
+            Una persona por línea: <code>Nombre, correo</code> (el nombre es opcional). Puedes pegar
+            varias a la vez.
+          </p>
+          <textarea
+            name="lista"
+            required
+            rows={3}
+            maxLength={8000}
+            placeholder={"Ana López, ana@correo.com\nCarlos Pérez, carlos@correo.com"}
+            className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
+          />
+          <div className="mt-2">
+            <ConfirmarAccionBoton
+              etiqueta="Enviar invitación"
+              titulo="¿Enviar la invitación?"
+              mensaje="Se enviará un correo con el enlace para agendar a cada correo de la lista. Quedarán guardados en la lista de abajo para poder volver a escribirles."
+              etiquetaConfirmar="Sí, enviar"
+              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark active:scale-95"
+            />
+          </div>
+        </form>
+
+        <div className="mt-5">
           {personas.length === 0 ? (
-            <p className="text-sm text-foreground/60">No hay postulantes para invitar.</p>
+            <p className="text-sm text-foreground/60">Todavía no hay personas para invitar.</p>
           ) : (
-            <InvitarSeleccion personas={personas} action={invitarVarias} />
+            <InvitarSeleccion personas={personas} action={invitarVarias} quitarInvitado={eliminarInvitado} />
           )}
         </div>
       </section>

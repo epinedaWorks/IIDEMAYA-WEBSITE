@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { huella, ipDe, permitir } from "@/lib/rate-limit";
-import { reservarFranja } from "@/lib/entrevistas";
+import { personaPorToken, reservarFranja } from "@/lib/entrevistas";
 import { sendEntrevistaAgendada } from "@/lib/email";
 
 export type ResultadoAgendar = { ok: true } | { ok: false; error: string };
@@ -30,30 +30,34 @@ export async function agendarEntrevista(token: string, franjaId: string): Promis
     return { ok: false, error: "Hiciste demasiados intentos. Espera un rato y vuelve a intentar." };
   }
 
-  const postulacion = await prisma.postulacion.findUnique({ where: { entrevistaToken: token } });
-  if (!postulacion || postulacion.estado === "RECHAZADA" || postulacion.estado === "CONTRATADA") {
+  const persona = await personaPorToken(token);
+  if (!persona || !persona.activa) {
     return { ok: false, error: "Este enlace ya no está activo." };
   }
 
-  const reserva = await reservarFranja(postulacion.id, franjaId);
+  const reserva = await reservarFranja(persona.quien, franjaId);
   if (!reserva.ok) return reserva;
 
   // Agendar es avanzar en el proceso; no se toca si el equipo ya lo movió a
-  // otro estado (entrevista, rechazada, contratada…).
-  if (postulacion.estado === "NUEVA" || postulacion.estado === "EN_REVISION") {
+  // otro estado (entrevista, rechazada, contratada…). Quien fue invitado a
+  // mano no tiene estado que actualizar.
+  if ("postulacionId" in persona.quien) {
     await prisma.postulacion
-      .update({ where: { id: postulacion.id }, data: { estado: "ENTREVISTA" } })
+      .updateMany({
+        where: { id: persona.quien.postulacionId, estado: { in: ["NUEVA", "EN_REVISION"] } },
+        data: { estado: "ENTREVISTA" },
+      })
       .catch((err) => console.error("[entrevista] no se pudo actualizar el estado:", err));
   }
 
   // Un correo que no sale no debe deshacer la reserva: ya quedó guardada.
-  await sendEntrevistaAgendada(postulacion, reserva.franja, token, reserva.anterior !== null).catch((err) =>
+  await sendEntrevistaAgendada(persona, reserva.franja, token, reserva.anterior !== null).catch((err) =>
     console.error("[entrevista] no se pudo enviar la confirmación:", err)
   );
 
   revalidatePath("/admin");
   revalidatePath("/admin/entrevistas");
-  revalidatePath(`/admin/postulaciones/${postulacion.id}`);
+  if ("postulacionId" in persona.quien) revalidatePath(`/admin/postulaciones/${persona.quien.postulacionId}`);
   revalidatePath(`/entrevista/${token}`);
   return { ok: true };
 }
