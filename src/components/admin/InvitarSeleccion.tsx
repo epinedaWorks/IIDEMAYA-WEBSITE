@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import ConfirmarAccionBoton from "@/components/admin/ConfirmarAccionBoton";
 import { INTERESES, INTERES_COLOR, INTERES_LABEL, type Interes } from "@/lib/postulacion-interes";
 
@@ -42,6 +42,7 @@ export default function InvitarSeleccion({
   const [interes, setInteres] = useState("");
   const [situacion, setSituacion] = useState("");
   const [origen, setOrigen] = useState("");
+  const [quitando, iniciarQuitar] = useTransition();
 
   const posiciones = useMemo(
     () => [...new Set(personas.map((p) => p.posicion).filter((x): x is string => Boolean(x)))].sort(),
@@ -91,7 +92,9 @@ export default function InvitarSeleccion({
   const n = elegidas.size;
 
   return (
-    <form action={action}>
+    // Va dentro del formulario de invitaciones (no es un formulario propio):
+    // así comparte con él el mensaje y las copias.
+    <div>
       {/* Lo marcado viaja aunque la fila esté oculta por un filtro. */}
       {[...elegidas].map((clave) => (
         <input key={clave} type="hidden" name="ids" value={clave} />
@@ -167,6 +170,7 @@ export default function InvitarSeleccion({
           mensaje={`Se enviará un correo a ${n} ${n === 1 ? "persona" : "personas"} con el enlace para agendar su entrevista. A quienes ya la recibieron se les vuelve a enviar.`}
           etiquetaConfirmar="Sí, enviar"
           deshabilitado={n === 0}
+          formAction={action}
           className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark active:scale-95 disabled:opacity-50"
         />
       </div>
@@ -176,7 +180,9 @@ export default function InvitarSeleccion({
           Nadie coincide con esos filtros.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-black/5 rounded-xl border border-black/5">
+        // La lista tiene su propio scroll para que muchas personas no
+        // alarguen toda la página.
+        <ul className="mt-3 max-h-[26rem] divide-y divide-black/5 overflow-y-auto rounded-xl border border-black/5">
           {visibles.map((p) => (
             <li key={p.clave} className="flex items-start gap-3 px-4 py-3 text-sm">
               <input
@@ -227,17 +233,19 @@ export default function InvitarSeleccion({
                 </span>
                 {p.invitadoManual && (
                   <button
-                    type="submit"
-                    formNoValidate
-                    formAction={async () => {
+                    type="button"
+                    disabled={quitando}
+                    onClick={() => {
                       setElegidas((prev) => {
                         const sig = new Set(prev);
                         sig.delete(p.clave);
                         return sig;
                       });
-                      await quitarInvitado(p.id);
+                      iniciarQuitar(async () => {
+                        await quitarInvitado(p.id);
+                      });
                     }}
-                    className="text-xs font-medium text-red-600 underline"
+                    className="text-xs font-medium text-red-600 underline disabled:opacity-50"
                   >
                     Quitar de la lista
                   </button>
@@ -247,6 +255,6 @@ export default function InvitarSeleccion({
           ))}
         </ul>
       )}
-    </form>
+    </div>
   );
 }

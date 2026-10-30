@@ -19,7 +19,10 @@ import {
   liberarFranja,
 } from "./actions";
 import ConfirmarAccionBoton from "@/components/admin/ConfirmarAccionBoton";
+import ControlesDespliegue from "@/components/admin/ControlesDespliegue";
 import InvitarSeleccion, { type PersonaInvitable } from "@/components/admin/InvitarSeleccion";
+import OpcionesCorreo from "@/components/admin/OpcionesCorreo";
+import { correosEquipoPostulaciones } from "@/lib/email";
 
 export const metadata: Metadata = { title: "Entrevistas | Panel IIDEMAYA" };
 export const dynamic = "force-dynamic";
@@ -90,6 +93,8 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
     postulacion: { select: { id: true, nombre: true } },
     invitado: { select: { id: true, nombre: true, correo: true } },
   } as const;
+
+  const correosEquipo = await correosEquipoPostulaciones();
 
   const [proximas, pasadas, postulaciones, invitados] = await Promise.all([
     prisma.franjaEntrevista.findMany({
@@ -195,9 +200,16 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
         </p>
       )}
 
-      <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-brand-dark">1. Habilitar horarios</h2>
-        <p className="mt-1 text-sm text-foreground/60">
+      {/* Plegada una vez que ya hay horarios: así la página no crece de más. */}
+      <details
+        open={dias.length === 0 || Boolean(params.error)}
+        className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm"
+      >
+        <summary className="cursor-pointer select-none text-lg font-semibold text-brand-dark">
+          1. Habilitar horarios
+          <span className="ml-2 text-sm font-normal text-foreground/50">(clic para abrir o cerrar)</span>
+        </summary>
+        <p className="mt-3 text-sm text-foreground/60">
           Se divide el rango en entrevistas de la duración que elijas. Para varios días, llena
           «Hasta el día»: se crean los mismos horarios cada día (sin sábado ni domingo, salvo que lo
           marques).
@@ -252,15 +264,18 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
             </button>
           </div>
         </form>
-      </section>
+      </details>
 
       <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold text-brand-dark">2. Agenda</h2>
-          <p className="text-sm text-foreground/60">
-            {libres} {libres === 1 ? "horario libre" : "horarios libres"} · {reservadas}{" "}
-            {reservadas === 1 ? "reservado" : "reservados"}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-sm text-foreground/60">
+              {libres} {libres === 1 ? "horario libre" : "horarios libres"} · {reservadas}{" "}
+              {reservadas === 1 ? "reservado" : "reservados"}
+            </p>
+            {dias.length > 1 && <ControlesDespliegue objetivo="agenda" />}
+          </div>
         </div>
 
         {dias.length === 0 ? (
@@ -268,11 +283,26 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
             Todavía no hay horarios habilitados. Crea los primeros con el formulario de arriba.
           </p>
         ) : (
-          <div className="mt-4 flex flex-col gap-5">
-            {dias.map((d) => (
-              <div key={d.clave}>
-                <h3 className="text-sm font-semibold first-letter:uppercase text-brand">{d.titulo}</h3>
-                <ul className="mt-2 divide-y divide-black/5 rounded-xl border border-black/5">
+          // Un bloque plegable por día; solo el primero viene abierto.
+          <div className="mt-4 flex flex-col gap-2">
+            {dias.map((d, i) => {
+              const libresDia = d.franjas.filter((f) => !f.postulacion && !f.invitado).length;
+              const reservadasDia = d.franjas.length - libresDia;
+              return (
+              <details
+                key={d.clave}
+                data-despliegue="agenda"
+                open={i === 0}
+                className="rounded-xl border border-black/5 open:bg-brand-light/10"
+              >
+                <summary className="flex cursor-pointer select-none flex-wrap items-baseline justify-between gap-2 px-4 py-2.5">
+                  <h3 className="text-sm font-semibold first-letter:uppercase text-brand">{d.titulo}</h3>
+                  <span className="text-xs text-foreground/60">
+                    {libresDia} {libresDia === 1 ? "libre" : "libres"} · {reservadasDia}{" "}
+                    {reservadasDia === 1 ? "reservado" : "reservados"}
+                  </span>
+                </summary>
+                <ul className="divide-y divide-black/5 border-t border-black/5">
                   {d.franjas.map((f) => (
                     <li key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
                       <span className="w-52 whitespace-nowrap font-medium tabular-nums">{rangoHorasGt(f.inicio, f.fin)}</span>
@@ -324,8 +354,9 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
                     </li>
                   ))}
                 </ul>
-              </div>
-            ))}
+              </details>
+              );
+            })}
           </div>
         )}
 
@@ -370,38 +401,46 @@ export default async function AdminEntrevistas({ searchParams }: { searchParams:
           </p>
         )}
 
-        <form action={invitarManual} className="mt-4 rounded-xl border border-black/5 bg-brand-light/30 p-4">
-          <h3 className="text-sm font-semibold text-brand-dark">Invitar a alguien que no postuló</h3>
-          <p className="mt-1 text-xs text-foreground/60">
-            Una persona por línea: <code>Nombre, correo</code> (el nombre es opcional). Puedes pegar
-            varias a la vez.
-          </p>
-          <textarea
-            name="lista"
-            required
-            rows={3}
-            maxLength={8000}
-            placeholder={"Ana López, ana@correo.com\nCarlos Pérez, carlos@correo.com"}
-            className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-          />
-          <div className="mt-2">
-            <ConfirmarAccionBoton
-              etiqueta="Enviar invitación"
-              titulo="¿Enviar la invitación?"
-              mensaje="Se enviará un correo con el enlace para agendar a cada correo de la lista. Quedarán guardados en la lista de abajo para poder volver a escribirles."
-              etiquetaConfirmar="Sí, enviar"
-              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark active:scale-95"
+        {/* Un solo formulario: el mensaje y las copias elegidos arriba valen
+            tanto para la lista manual como para las personas marcadas abajo;
+            cada botón de enviar usa su propia acción. */}
+        <form action={invitarVarias}>
+          <OpcionesCorreo correosEquipo={correosEquipo} />
+
+          <div className="mt-4 rounded-xl border border-black/5 bg-brand-light/30 p-4">
+            <h3 className="text-sm font-semibold text-brand-dark">Invitar a alguien que no postuló</h3>
+            <p className="mt-1 text-xs text-foreground/60">
+              Una persona por línea: <code>Nombre, correo</code> (el nombre es opcional). Puedes pegar
+              varias a la vez.
+            </p>
+            <textarea
+              name="lista"
+              rows={3}
+              maxLength={8000}
+              placeholder={"Ana López, ana@correo.com\nCarlos Pérez, carlos@correo.com"}
+              className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
             />
+            <div className="mt-2">
+              <ConfirmarAccionBoton
+                etiqueta="Enviar invitación a esta lista"
+                titulo="¿Enviar la invitación?"
+                mensaje="Se enviará un correo con el enlace para agendar a cada correo de la lista (con el mensaje y las copias de «Mensaje y copias del correo»). Quedarán guardados en la lista de abajo para poder volver a escribirles."
+                etiquetaConfirmar="Sí, enviar"
+                formAction={invitarManual}
+                className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark active:scale-95"
+              />
+            </div>
+          </div>
+
+          <h3 className="mt-6 text-sm font-semibold text-brand-dark">Postulantes e invitados</h3>
+          <div className="mt-3">
+            {personas.length === 0 ? (
+              <p className="text-sm text-foreground/60">Todavía no hay personas para invitar.</p>
+            ) : (
+              <InvitarSeleccion personas={personas} action={invitarVarias} quitarInvitado={eliminarInvitado} />
+            )}
           </div>
         </form>
-
-        <div className="mt-5">
-          {personas.length === 0 ? (
-            <p className="text-sm text-foreground/60">Todavía no hay personas para invitar.</p>
-          ) : (
-            <InvitarSeleccion personas={personas} action={invitarVarias} quitarInvitado={eliminarInvitado} />
-          )}
-        </div>
       </section>
     </div>
   );

@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { asegurarToken, nuevoToken, planificarFranjas } from "@/lib/entrevistas";
-import { sendEntrevistaLiberada, sendInvitacionEntrevista, sendInvitacionesEntrevista } from "@/lib/email";
+import {
+  correosEquipoPostulaciones,
+  sendEntrevistaLiberada,
+  sendInvitacionEntrevista,
+  sendInvitacionesEntrevista,
+  type OpcionesInvitacion,
+} from "@/lib/email";
 
 function refrescar(postulacionId?: string) {
   revalidatePath("/admin/entrevistas");
@@ -111,10 +117,45 @@ type Destino = {
   invitado: boolean;
 };
 
+const CORREO_RE = /^[^\s@<>,;"']+@[^\s@<>,;"']+\.[^\s@<>,;"']+$/;
+const MAX_COPIAS = 10;
+
+function falla(texto: string): never {
+  redirect(`/admin/entrevistas?error=${encodeURIComponent(texto)}`);
+}
+
+// Lee de las opciones del formulario el mensaje (predeterminado o propio) y a
+// quién más se le copia. Si algo no es válido, se corta antes de enviar nada.
+async function leerOpciones(formData: FormData): Promise<OpcionesInvitacion> {
+  let mensaje: string | null = null;
+  if (formData.get("modoMensaje") === "personalizado") {
+    mensaje = String(formData.get("mensaje") ?? "").trim().slice(0, 2000);
+    if (!mensaje) falla("Escribiste un mensaje personalizado vacío: escríbelo o vuelve al predeterminado.");
+  }
+
+  const copias = new Set<string>();
+  const invalidos: string[] = [];
+  for (const c of String(formData.get("cc") ?? "").split(/[\s,;]+/).filter(Boolean)) {
+    if (CORREO_RE.test(c) && c.length <= 200) copias.add(c.toLowerCase());
+    else invalidos.push(c.slice(0, 60));
+  }
+  if (invalidos.length) falla(`Estos correos de copia no son válidos: ${invalidos.slice(0, 3).join(", ")}.`);
+  if (formData.get("copiaEquipo") === "on") {
+    for (const c of await correosEquipoPostulaciones()) copias.add(c.toLowerCase());
+  }
+  if (copias.size > MAX_COPIAS) falla(`Máximo ${MAX_COPIAS} correos en copia.`);
+
+  const lista = [...copias];
+  // «Oculta»: quienes reciben la invitación no ven a quién más se le copió.
+  const oculta = formData.get("tipoCopia") === "bcc";
+  return { mensaje, cc: oculta ? [] : lista, bcc: oculta ? lista : [] };
+}
+
 // Envía las invitaciones y marca la fecha solo a quienes sí salieron.
-async function enviarYMarcar(destinos: Destino[]) {
+async function enviarYMarcar(destinos: Destino[], opciones: OpcionesInvitacion) {
   const { enviados, fallidos } = await sendInvitacionesEntrevista(
-    destinos.map((d) => ({ ...d, id: d.clave }))
+    destinos.map((d) => ({ ...d, id: d.clave })),
+    opciones
   );
   const ahora = new Date();
   const de = (prefijo: string) =>
@@ -143,7 +184,8 @@ export async function invitarVarias(formData: FormData) {
   await requireAdminSession();
 
   const claves = [...new Set(formData.getAll("ids").map(String))].slice(0, 300);
-  if (claves.length === 0) redirect("/admin/entrevistas?error=" + encodeURIComponent("No elegiste a nadie."));
+  if (claves.length === 0) falla("No elegiste a nadie en la lista.");
+  const opciones = await leerOpciones(formData);
 
   const idsDe = (prefijo: string) => claves.filter((c) => c.startsWith(prefijo)).map((c) => c.slice(2));
 
@@ -176,7 +218,7 @@ export async function invitarVarias(formData: FormData) {
     })),
   ];
 
-  const r = await enviarYMarcar(destinos);
+  const r = await enviarYMarcar(destinos, opciones);
   refrescar();
   redirect(`/admin/entrevistas?msg=invitadas&n=${r.enviados}&f=${r.fallidos}`);
 }
@@ -214,9 +256,8 @@ export async function invitarManual(formData: FormData) {
       .slice(0, 100);
     personas.push({ nombre, correo });
   }
-  if (personas.length === 0) {
-    redirect("/admin/entrevistas?error=" + encodeURIComponent("No encontré ningún correo válido en la lista."));
-  }
+  if (personas.length === 0) falla("No encontré ningún correo válido en la lista de personas a invitar.");
+  const opciones = await leerOpciones(formData);
 
   const destinos: Destino[] = [];
   let yaPostularon = 0;
@@ -255,7 +296,7 @@ export async function invitarManual(formData: FormData) {
     });
   }
 
-  const r = await enviarYMarcar(destinos);
+  const r = await enviarYMarcar(destinos, opciones);
   refrescar();
   redirect(
     `/admin/entrevistas?msg=manual&n=${r.enviados}&f=${r.fallidos}&x=${invalidas}&p=${yaPostularon}`

@@ -83,6 +83,8 @@ async function enviar(opts: {
   html: string;
   replyTo?: string;
   attachments?: Adjunto[];
+  cc?: string[];
+  bcc?: string[];
 }): Promise<ResultadoEnvio> {
   if (!API_KEY) {
     sinConfig();
@@ -103,6 +105,8 @@ async function enviar(opts: {
           subject: limpiarAsunto(opts.subject),
           html: opts.html,
           ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+          ...(opts.cc?.length ? { cc: opts.cc } : {}),
+          ...(opts.bcc?.length ? { bcc: opts.bcc } : {}),
           ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
         }),
       });
@@ -362,29 +366,49 @@ function detalleHtml(detalle: string) {
     : esc(detalle);
 }
 
+// Cómo sale una invitación: el texto de apertura (null = el predeterminado) y
+// a quién más se le copia. El botón con el enlace para agendar va siempre.
+export type OpcionesInvitacion = {
+  mensaje?: string | null;
+  cc?: string[];
+  bcc?: string[];
+};
+
+// Correos del equipo que reciben los avisos de postulaciones (Ajustes).
+export const correosEquipoPostulaciones = getCorreosPostulacion;
+
 // Invitación para que la persona elija día y hora. Una sola vez por correo y
 // con el enlace propio de cada postulación.
 export async function sendInvitacionEntrevista(
   p: Pick<Postulacion, "nombre" | "correo" | "vacanteTitulo"> & { invitado?: boolean },
-  token: string
+  token: string,
+  opciones: OpcionesInvitacion = {}
 ): Promise<ResultadoEnvio> {
   const correosEquipo = await getCorreosPostulacion();
   const posicion = p.vacanteTitulo ? ` para la posición de ${esc(p.vacanteTitulo)}` : "";
   // Quien postuló recibe un agradecimiento; a quien se invitó a mano no se le
   // agradece una postulación que no hizo.
-  const intro = p.invitado
+  const introPredeterminada = p.invitado
     ? "Nos gustaría conocerte y te invitamos a una entrevista con IIDEMAYA: elige el día y la hora que mejor te acomoden."
     : `Gracias por postularte${posicion}. Nos gustaría conocerte: elige el día y la hora que mejor te acomoden para tu entrevista.`;
+  const cuerpo = opciones.mensaje
+    ? parrafos(personaliza(opciones.mensaje, p.nombre))
+    : `<p style="font-size:14px;line-height:1.6">${introPredeterminada}</p>`;
+  const pie = opciones.mensaje
+    ? ""
+    : `<p style="font-size:13px;color:#666;line-height:1.6;margin-top:16px">Si ninguno de los horarios te sirve, responde a este correo y buscamos otro.</p>`;
+
+  // Nadie debe recibir su propio correo también como copia.
+  const sinDestinatario = (lista: string[] = []) =>
+    lista.filter((c) => c.toLowerCase() !== p.correo.toLowerCase());
+
   return enviar({
     to: p.correo,
     subject: "Agenda tu entrevista · IIDEMAYA",
-    html: layout(
-      esc(saludo(p.nombre)),
-      `<p style="font-size:14px;line-height:1.6">${intro}</p>
-      ${boton(urlAgenda(token), "Agendar mi entrevista")}
-      <p style="font-size:13px;color:#666;line-height:1.6;margin-top:16px">Si ninguno de los horarios te sirve, responde a este correo y buscamos otro.</p>`
-    ),
+    html: layout(esc(saludo(p.nombre)), `${cuerpo}${boton(urlAgenda(token), "Agendar mi entrevista")}${pie}`),
     replyTo: correosEquipo[0],
+    cc: sinDestinatario(opciones.cc),
+    bcc: sinDestinatario(opciones.bcc),
   });
 }
 
@@ -399,14 +423,15 @@ export async function sendInvitacionesEntrevista(
     vacanteTitulo: string | null;
     token: string;
     invitado?: boolean;
-  }[]
+  }[],
+  opciones: OpcionesInvitacion = {}
 ): Promise<{ enviados: string[]; fallidos: { id: string; correo: string; motivo: string }[] }> {
   const enviados: string[] = [];
   const fallidos: { id: string; correo: string; motivo: string }[] = [];
   const TANDA = 4;
   for (let i = 0; i < lista.length; i += TANDA) {
     const tanda = lista.slice(i, i + TANDA);
-    const resultados = await Promise.all(tanda.map((p) => sendInvitacionEntrevista(p, p.token)));
+    const resultados = await Promise.all(tanda.map((p) => sendInvitacionEntrevista(p, p.token, opciones)));
     resultados.forEach((r, idx) => {
       if (r.ok) enviados.push(tanda[idx].id);
       else fallidos.push({ id: tanda[idx].id, correo: tanda[idx].correo, motivo: r.motivo });
