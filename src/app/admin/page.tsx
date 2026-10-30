@@ -38,6 +38,9 @@ export default async function AdminDashboard({
         interes: true,
         vacanteTitulo: true,
         resumenIA: true,
+        entrevistaInvitadaAt: true,
+        // La próxima entrevista reservada (si tiene una).
+        entrevistas: { where: { inicio: { gt: new Date() } }, orderBy: { inicio: "asc" }, select: { inicio: true }, take: 1 },
       },
     }),
     prisma.postulacion.count(),
@@ -94,6 +97,7 @@ export default async function AdminDashboard({
                 <th className="px-3 py-3 font-semibold">Fecha</th>
                 <th className="px-3 py-3 font-semibold">Estado</th>
                 <th className="px-3 py-3 font-semibold">Interés</th>
+                <th className="px-3 py-3 font-semibold">Entrevista</th>
                 <th className="px-3 py-3 text-right font-semibold">Acciones</th>
                 <th className="px-3 py-3 font-semibold">Resumen sugerido con IA</th>
               </tr>
@@ -115,6 +119,8 @@ export default async function AdminDashboard({
                     fecha: formatearFechaHoraGt(p.createdAt),
                     estado: p.estado,
                     interes: p.interes,
+                    entrevista: p.entrevistas[0] ? formatearFechaHoraGt(p.entrevistas[0].inicio) : null,
+                    invitada: Boolean(p.entrevistaInvitadaAt),
                     resumenIA: p.resumenIA,
                   }}
                 />

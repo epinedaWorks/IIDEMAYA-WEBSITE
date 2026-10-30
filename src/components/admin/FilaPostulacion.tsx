@@ -21,6 +21,9 @@ export type PostulacionFila = {
   fecha: string;
   estado: Estado;
   interes: Interes;
+  // Fecha de la entrevista que reservó, o null; `invitada` = ya se le envió el enlace.
+  entrevista: string | null;
+  invitada: boolean;
   resumenIA: string | null;
 };
 
@@ -81,6 +84,15 @@ export default function FilaPostulacion({
       </td>
       <td className="px-3 py-3" onClick={detenerClic}>
         <InteresSelect id={p.id} interes={p.interes} compacto />
+      </td>
+      <td className="min-w-[8rem] px-3 py-3 text-xs">
+        {p.entrevista ? (
+          <span className="font-medium text-green-700">{p.entrevista}</span>
+        ) : p.invitada ? (
+          <span className="text-blue-700">Invitada, sin agendar</span>
+        ) : (
+          <span className="text-foreground/40">—</span>
+        )}
       </td>
       <td className="px-3 py-3 text-right" onClick={detenerClic}>
         <EliminarPostulacionBoton

@@ -48,6 +48,11 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: CABECERAS_GENERALES },
       { source: "/admin/:path*", headers: CABECERAS_PRIVADAS },
       { source: "/api/admin/:path*", headers: CABECERAS_PRIVADAS },
+      // El enlace de agenda lleva el token personal de cada postulante.
+      {
+        source: "/entrevista/:path*",
+        headers: [...CABECERAS_PRIVADAS, { key: "Referrer-Policy", value: "no-referrer" }],
+      },
     ];
   },
 };

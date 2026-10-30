@@ -61,6 +61,8 @@ export default function PostulacionForm({
 }) {
   const [estado, setEstado] = useState<Estado>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  // Enlace para agendar la entrevista; vacío si aún no hay horarios habilitados.
+  const [agendaUrl, setAgendaUrl] = useState("");
   const [progreso, setProgreso] = useState(0);
   const [correo, setCorreo] = useState("");
   const [correoTocado, setCorreoTocado] = useState(false);
@@ -99,6 +101,8 @@ export default function PostulacionForm({
         setEstado("error");
         return;
       }
+      const cuerpo = await res.json().catch(() => ({}));
+      setAgendaUrl(typeof cuerpo.agendaUrl === "string" ? cuerpo.agendaUrl : "");
       setEstado("ok");
       form.reset();
     } catch {
@@ -115,6 +119,20 @@ export default function PostulacionForm({
           Gracias por tu interés en IIDEMAYA. Revisamos tu información y te contactaremos a tu
           correo si tu perfil avanza en el proceso.
         </p>
+        {agendaUrl && (
+          <div className="mt-5 rounded-xl bg-brand-light p-5">
+            <p className="text-sm font-semibold text-brand-dark">¿Quieres adelantarte?</p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/70">
+              Ya hay horarios disponibles: puedes agendar tu entrevista ahora mismo.
+            </p>
+            <a
+              href={agendaUrl}
+              className="mt-3 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark active:scale-95"
+            >
+              Agendar mi entrevista
+            </a>
+          </div>
+        )}
       </div>
     );
   }

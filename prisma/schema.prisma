@@ -10,15 +10,15 @@ generator client {
 // Cuenta de administrador del panel (/admin). Login por correo + contraseña
 // (hash con bcrypt, nunca texto plano) vía NextAuth Credentials.
 model AdminUser {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime     @default(now())
+  id                String       @id @default(cuid())
+  email             String       @unique
+  passwordHash      String
+  name              String?
+  createdAt         DateTime     @default(now())
   // Las sesiones iniciadas antes de esta fecha dejan de valer (se actualiza
   // al cambiar la contraseña, para cerrar cualquier sesión ajena abierta).
   passwordChangedAt DateTime?
-  comentarios  Comentario[]
+  comentarios       Comentario[]
 }
 
 // Un registro por intento (inicio de sesión fallido, envío de formulario…)
@@ -82,15 +82,15 @@ model Postulacion {
   createdAt DateTime @default(now())
 
   // Contacto
-  nombre   String
-  correo   String
-  telefono String?
+  nombre    String
+  correo    String
+  telefono  String?
   // Dónde vive la persona. Opcional en la base de datos porque las
   // postulaciones anteriores a este campo no la tienen; el formulario sí la pide.
   direccion String?
 
   // Preguntas de entrevista (reformuladas, mismo fondo que el cuestionario original)
-  opinionSociedad                  String
+  opinionSociedad                   String
   opinionPoblacionMaya              String
   comodidadTrabajarConPoblacionMaya String
   opinionFormaPensarActuarMaya      String
@@ -107,11 +107,11 @@ model Postulacion {
   expectativaSalarial               String
 
   // Preguntas nuevas
-  modalidadTrabajo    ModalidadTrabajo
-  puedeFacturar       Boolean
-  tieneVehiculo       Boolean
-  esEstudianteActual  Boolean
-  trabajaActualmente  Boolean
+  modalidadTrabajo   ModalidadTrabajo
+  puedeFacturar      Boolean
+  tieneVehiculo      Boolean
+  esEstudianteActual Boolean
+  trabajaActualmente Boolean
 
   // Archivos (keys de Netlify Blobs, no el archivo en sí)
   cvBlobKey        String
@@ -129,28 +129,54 @@ model Postulacion {
   resumenIA   String?
   resumenIAAt DateTime?
 
-  estado      EstadoPostulacion @default(NUEVA)
+  estado      EstadoPostulacion  @default(NUEVA)
   // Valoración de la empresa sobre la persona, aparte del estado del proceso.
   interes     InteresPostulacion @default(SIN_VALORAR)
   comentarios Comentario[]
 
+  // Agenda de entrevista: el token va en el enlace que recibe la persona
+  // (/entrevista/<token>), así no necesita cuenta. entrevistaInvitadaAt es la
+  // última vez que se le envió la invitación por correo.
+  entrevistaToken      String?            @unique
+  entrevistaInvitadaAt DateTime?
+  entrevistas          FranjaEntrevista[]
+
   @@index([vacanteId])
+}
+
+// Un horario de entrevista que el equipo habilita. Sin postulación = libre.
+// Si se borra la postulación, el horario vuelve a quedar libre.
+model FranjaEntrevista {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  inicio  DateTime
+  fin     DateTime
+  // Enlace de videollamada o lugar; se le muestra a quien reserva.
+  detalle String?
+
+  postulacion   Postulacion? @relation(fields: [postulacionId], references: [id], onDelete: SetNull)
+  postulacionId String?
+  reservadaAt   DateTime?
+
+  @@index([inicio])
+  @@index([postulacionId])
 }
 
 // Plaza abierta que se muestra en /vacantes y en la lista de /talento. El
 // equipo las crea, edita, habilita o deshabilita desde el panel admin.
 // funciones y requisitos son listas cortas (una viñeta por elemento).
 model Vacante {
-  id          String        @id @default(cuid())
-  titulo      String
-  resumen     String
-  modalidad   String
-  funciones   String[]
-  requisitos  String[]
-  activa      Boolean       @default(true)
-  orden       Int           @default(0)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  titulo        String
+  resumen       String
+  modalidad     String
+  funciones     String[]
+  requisitos    String[]
+  activa        Boolean       @default(true)
+  orden         Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   postulaciones Postulacion[]
 }
 

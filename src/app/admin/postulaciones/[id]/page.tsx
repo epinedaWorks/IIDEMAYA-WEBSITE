@@ -16,6 +16,8 @@ import EstadoSelect from "@/components/admin/EstadoSelect";
 import InteresSelect from "@/components/admin/InteresSelect";
 import { consultaDeFiltros, leerFiltros, whereDeFiltros } from "@/lib/postulacion-filtros";
 import GenerarResumenBoton from "@/components/admin/GenerarResumenBoton";
+import InvitarEntrevistaBoton from "@/components/admin/InvitarEntrevistaBoton";
+import { fechaHoraLargaGt, rangoHorasGt, urlAgenda } from "@/lib/entrevistas";
 import { iaConfigurada } from "@/lib/resumen-ia";
 
 export const metadata: Metadata = { title: "Postulación | Panel IIDEMAYA" };
@@ -41,10 +43,14 @@ export default async function DetallePostulacion({
         orderBy: { createdAt: "asc" },
         include: { admin: { select: { name: true, email: true } } },
       },
+      // La entrevista más reciente (la próxima, o la última que tuvo).
+      entrevistas: { orderBy: { inicio: "desc" }, take: 1 },
     },
   });
 
   if (!postulacion) notFound();
+
+  const entrevista = postulacion.entrevistas[0] ?? null;
 
   const modalidadLabel =
     OPCIONES_MODALIDAD.find((o) => o.value === postulacion.modalidadTrabajo)?.label ??
@@ -188,6 +194,36 @@ export default async function DetallePostulacion({
               : "La IA no está configurada en este sitio."}
           </p>
         )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-brand-dark">Entrevista</h2>
+          <InvitarEntrevistaBoton id={postulacion.id} yaInvitada={Boolean(postulacion.entrevistaInvitadaAt)} />
+        </div>
+        {entrevista ? (
+          <div className="mt-3 rounded-lg bg-green-50 px-4 py-3 text-sm">
+            <p className="font-semibold first-letter:uppercase text-green-800">{fechaHoraLargaGt(entrevista.inicio)}</p>
+            <p className="text-foreground/70">
+              {rangoHorasGt(entrevista.inicio, entrevista.fin)} (hora de Guatemala)
+              {entrevista.inicio < new Date() ? " · ya pasó" : ""}
+            </p>
+            {entrevista.detalle && <p className="mt-1 break-words text-foreground/70">{entrevista.detalle}</p>}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-foreground/60">Todavía no ha agendado su entrevista.</p>
+        )}
+        <p className="mt-3 text-xs text-foreground/50">
+          {postulacion.entrevistaInvitadaAt
+            ? `Última invitación enviada el ${formatearFechaHoraGt(postulacion.entrevistaInvitadaAt)}.`
+            : "Aún no se le ha enviado la invitación para agendar."}
+          {postulacion.entrevistaToken && (
+            <>
+              {" "}
+              Su enlace personal: <code className="select-all break-all">{urlAgenda(postulacion.entrevistaToken)}</code>
+            </>
+          )}
+        </p>
       </section>
 
       <section className="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
