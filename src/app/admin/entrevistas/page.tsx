@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
@@ -86,7 +87,11 @@ const etiqueta = "flex flex-col gap-1 text-xs font-semibold text-foreground/60";
 export default async function AdminEntrevistas({ searchParams }: { searchParams: Promise<Params> }) {
   await requireAdminSession();
   const params = await searchParams;
-  const mensaje = aviso(params);
+  // El texto de `error` viaja en la URL: si alguien le manda al equipo un
+  // enlace armado a mano, no debe poder mostrarle un mensaje inventado. Solo se
+  // muestra cuando la visita viene de una acción del propio sitio.
+  const desdeElSitio = (await headers()).get("sec-fetch-site") === "same-origin";
+  const mensaje = aviso(desdeElSitio ? params : { ...params, error: undefined });
   const ahora = new Date();
 
   const quien = {

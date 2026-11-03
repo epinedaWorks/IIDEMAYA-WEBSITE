@@ -241,7 +241,9 @@ export async function invitarManual(formData: FormData) {
   const personas: { nombre: string; correo: string }[] = [];
   let invalidas = 0;
   for (const linea of lineas) {
-    const correo = linea.match(CORREO_EN_LINEA)?.[0]?.toLowerCase();
+    // Una línea real ("Nombre, correo") es corta; una enorme es basura (y
+    // evita que el patrón de correo trabaje de más sobre texto gigante).
+    const correo = linea.length <= 300 ? linea.match(CORREO_EN_LINEA)?.[0]?.toLowerCase() : undefined;
     if (!correo || correo.length > 200) {
       invalidas++;
       continue;

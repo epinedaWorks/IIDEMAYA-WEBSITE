@@ -250,8 +250,10 @@ export async function reservarFranja(quien: Quien, franjaId: string): Promise<Re
 // ---------- Calendario (.ics) ----------
 
 const icsFecha = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+// Cualquier salto de línea (\r\n, \r o \n) se escapa: un \r suelto también
+// parte la línea en algunos lectores y permitiría colar otras propiedades.
 const icsTexto = (s: string) =>
-  s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 
 // Archivo que Google Calendar, Outlook y Apple Calendar abren con un clic.
 export function crearIcs(f: { id: string; inicio: Date; fin: Date; detalle: string | null }): string {

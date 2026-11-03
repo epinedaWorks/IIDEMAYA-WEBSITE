@@ -22,11 +22,15 @@ export async function agendarEntrevista(token: string, franjaId: string): Promis
   }
 
   const ip = ipDe(await headers());
-  const [porIp, porToken] = await Promise.all([
+  // Cada reserva o cambio manda correos a la dirección de esa postulación:
+  // el tope diario evita que alguien use el enlace para llenarle el buzón a
+  // un tercero o para dar vueltas entre horarios sin parar.
+  const [porIp, porToken, porDia] = await Promise.all([
     permitir(`entrevista:ip:${ip}`, 30, HORA_MS),
     permitir(`entrevista:token:${huella(token)}`, 15, HORA_MS),
+    permitir(`entrevista:dia:${huella(token)}`, 8, 24 * HORA_MS),
   ]);
-  if (!porIp || !porToken) {
+  if (!porIp || !porToken || !porDia) {
     return { ok: false, error: "Hiciste demasiados intentos. Espera un rato y vuelve a intentar." };
   }
 
