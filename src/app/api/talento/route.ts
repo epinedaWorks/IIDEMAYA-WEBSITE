@@ -7,7 +7,6 @@ import { generarYGuardarResumen } from "@/lib/resumen-ia";
 import { huella, ipDe, permitir } from "@/lib/rate-limit";
 import { CAMPO_TRAMPA } from "@/lib/anti-bots";
 import { VACANTE_GENERAL } from "@/lib/vacantes-const";
-import { ANTICIPACION_MIN, asegurarToken } from "@/lib/entrevistas";
 import {
   PREGUNTAS_TEXTO,
   PREGUNTA_DIA_NO_DISPONIBLE,
@@ -203,18 +202,8 @@ export async function POST(req: Request) {
   // el resumen falla se puede generar después desde el panel.
   await Promise.all([sendPostulacionEmails(postulacion), generarYGuardarResumen(postulacion)]);
 
-  // Si el equipo ya habilitó horarios, se le ofrece a la persona agendar de
-  // una vez (el enlace es el mismo que recibirá por invitación). Si algo
-  // falla aquí, la postulación ya quedó guardada: solo no se ofrece.
-  let agendaUrl: string | undefined;
-  try {
-    const hayHorarios = await prisma.franjaEntrevista.count({
-      where: { postulacionId: null, invitadoId: null, inicio: { gt: new Date(Date.now() + ANTICIPACION_MIN * 60_000) } },
-    });
-    if (hayHorarios > 0) agendaUrl = `/entrevista/${await asegurarToken(postulacion.id)}`;
-  } catch (err) {
-    console.error("[talento] no se pudo preparar el enlace de entrevista:", err);
-  }
-
-  return NextResponse.json({ ok: true, agendaUrl });
+  // No se devuelve enlace para agendar: el formulario no verifica que el
+  // correo sea de quien postula, así que el enlace personal solo se entrega
+  // por correo (invitación desde el panel), donde queda probada la propiedad.
+  return NextResponse.json({ ok: true });
 }
